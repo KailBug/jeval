@@ -2,7 +2,13 @@ export const PROTOCOL_VERSION = 1 as const
 export const RECORD_VERSION = 1 as const
 
 export type RunStatus = 'completed' | 'failed' | 'unknown'
-export type EventKind = 'message' | 'tool_call' | 'tool_result' | 'verification' | 'error'
+export type EventKind =
+  | 'message'
+  | 'tool_call'
+  | 'tool_result'
+  | 'verification'
+  | 'lifecycle'
+  | 'error'
 export interface EvidenceRef {
   sourceId: string
   location: string
@@ -19,6 +25,19 @@ export interface Run {
   durationMs: number | null
   tokens: number | null
   eventCount: number
+  importInfo?: {
+    file: string
+    sha256: string
+    sessionId: string
+    cliVersion: string
+    forkedFromId?: string
+    warningCount: number
+    warnings: { line: number; message: string }[]
+  }
+}
+export interface ImportResult {
+  run: Run
+  replaced: boolean
 }
 export interface RunEvent {
   id: string
@@ -44,6 +63,7 @@ export interface Hello {
   capabilities: string[]
 }
 export interface RunQuery {
+  source?: 'all' | 'demo' | 'codex'
   search?: string
   status?: RunStatus | 'all'
   offset?: number
@@ -55,6 +75,7 @@ export interface EventQuery {
   limit?: number
 }
 export interface DesktopAPI {
+  importCodex(): Promise<ImportResult | null>
   hello(): Promise<Hello>
   listRuns(query: RunQuery): Promise<Page<Run>>
   listEvents(query: EventQuery): Promise<Page<RunEvent>>

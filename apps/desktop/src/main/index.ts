@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './engine-client'
@@ -9,6 +9,7 @@ let ready: Promise<Hello>
 let restarting: Promise<Hello> | undefined
 let quitting = false
 let window: BrowserWindow | undefined
+let importing = false
 const rendererFile = join(__dirname, '../renderer/index.html')
 const developmentURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
 
@@ -25,6 +26,22 @@ function startEngine(): Promise<Hello> {
 
 function registerIPC(): void {
   const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
+    'jeval:import-codex': async () => {
+      if (!window || importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        const selection = await dialog.showOpenDialog(window, {
+          title: '导入 Codex 记录',
+          properties: ['openFile'],
+          filters: [{ name: 'Codex rollout', extensions: ['jsonl'] }]
+        })
+        if (selection.canceled || !selection.filePaths[0]) return null
+        return await engine.request('codex.import', { path: selection.filePaths[0] }, 30000)
+      } finally {
+        importing = false
+      }
+    },
     'jeval:hello': async () => {
       await ready
       return engine.request('hello')
@@ -38,6 +55,7 @@ function registerIPC(): void {
       return engine.request('runs.events', params)
     },
     'jeval:restart': async () => {
+      if (importing) throw new Error('请等待导入完成')
       if (!restarting)
         restarting = (async () => {
           await engine.stop()

@@ -53,7 +53,7 @@ export class EngineClient {
     }
   }
 
-  request<T>(method: string, params: unknown = {}): Promise<T> {
+  request<T>(method: string, params: unknown = {}, timeoutMs = this.timeoutMs): Promise<T> {
     if (this.failure) return Promise.reject(this.failure)
     if (!this.child || this.stopping) return Promise.reject(new Error('引擎未就绪'))
     if (this.pending.size >= 128) return Promise.reject(new Error('请求过多，请稍后重试'))
@@ -66,7 +66,7 @@ export class EngineClient {
       const timer = setTimeout(() => {
         this.pending.delete(id)
         reject(new Error(`引擎请求超时：${method}`))
-      }, this.timeoutMs)
+      }, timeoutMs)
       this.pending.set(id, { resolve: (value) => resolve(value as T), reject, timer })
       this.child!.stdin.write(frame, (error) => {
         if (error) this.fail(error)
