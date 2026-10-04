@@ -1,0 +1,33 @@
+name: Desktop and engine
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+          cache: false
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:e2e
+      - run: npm run pack
+      - run: npm run test:e2e
+        env:
+          JEVAL_PACKAGED_EXECUTABLE: release/win-unpacked/jeval.exe
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-test-results
+          path: test-results/
