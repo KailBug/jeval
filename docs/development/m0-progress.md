@@ -4,6 +4,12 @@
 
 阶段结论：**M0 进行中，Codex 文件导入、目录发现后选择导入、记录内搜索/类型筛选可用，里程碑未验收完成**。主规划中的决策与清单见 [开发规划](../jeval-development-plan.md)，专题入口见 [文档索引](../README.md)。
 
+## PR #4 的 Windows CI 路径断言修复
+
+2026-10-04，远程 Windows CI 在 `TestScanRecursiveFailuresReplacementAndEvidence` 的来源路径断言失败。导入器保存 `filepath.EvalSymlinks` 解析后的路径，测试却与 `t.TempDir()` 派生的原始字符串比较；Actions 日志显示临时目录使用 `RUNNER~1` 短路径。本机使用大小写不同的 `TMP`/`TEMP` 路径复现了同一失败，输出确认导入成功、差异仅为路径表示。
+
+测试现与解析后的预期路径比较，并单独报告记录数量、缺失来源信息和路径差异；Windows 增加不同大小写路径的完整扫描/选择/更新回归。生产导入逻辑和 CI 检查项保持不变。使用大小写不同的临时路径执行 `go test ./... -count=1` 已通过；正常 Windows 环境的 `npm run check` 通过（类型、Go、5 项跨进程测试和生产构建）。沙箱中的跨进程测试曾因禁止创建 junction 而失败，获准在正常环境重跑后通过。修复提交的远程结果以 [PR #4 检查记录](https://github.com/KailBug/jeval/pull/4/checks) 为准，不以本机通过代替。本项不提升真实来源或安装验收状态。
+
 ## 扫描后选择导入与记录内搜索
 
 2026-10-04，继续在 `feat/codex-directory-discovery`，先按用户要求替换“扫描即导入”的行为，再推进 M1 的记录内搜索。

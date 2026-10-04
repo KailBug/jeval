@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -66,13 +67,30 @@ func selectScan(t *testing.T, s *scanService, id string, ids ...string) ScanStat
 }
 
 func TestScanRecursiveFailuresReplacementAndEvidence(t *testing.T) {
-	root := t.TempDir()
+	t.Run("temporary path", func(t *testing.T) {
+		testScanRecursiveFailuresReplacementAndEvidence(t, t.TempDir())
+	})
+	if runtime.GOOS == "windows" {
+		t.Run("alternate path casing", func(t *testing.T) {
+			testScanRecursiveFailuresReplacementAndEvidence(t, strings.ToUpper(t.TempDir()))
+		})
+	}
+}
+
+func testScanRecursiveFailuresReplacementAndEvidence(t *testing.T, root string) {
+	t.Helper()
 	nested := filepath.Join(root, "中文 空格")
 	if err := os.Mkdir(nested, 0700); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(nested, "session.JSONL")
 	writeScanFile(t, path, scanFixture)
+	// Imports store resolved paths; TEMP may contain a Windows 8.3 alias or
+	// different casing, and other platforms may use a symlinked temp directory.
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	writeScanFile(t, filepath.Join(root, "broken.jsonl"), "not a rollout")
 	writeScanFile(t, filepath.Join(root, "ignored.txt"), scanFixture)
 	s := &scanService{record: sample(t)}
@@ -92,9 +110,15 @@ func TestScanRecursiveFailuresReplacementAndEvidence(t *testing.T) {
 	}
 	selectScan(t, s, first.ID, choices[0].ID)
 	page = s.dispatch(request("runs.list", `{"source":"codex"}`)).Result.(Page[model.Run])
+	if page.Total != 1 || len(page.Items) != 1 {
+		t.Fatalf("expected one imported run: %+v", page)
+	}
 	run := page.Items[0]
-	if page.Total != 1 || run.ImportInfo.File != path {
-		t.Fatalf("bad run: %+v", page)
+	if run.ImportInfo == nil {
+		t.Fatal("imported run is missing source information")
+	}
+	if run.ImportInfo.File != resolvedPath {
+		t.Fatalf("imported path=%q, want resolved path=%q (input=%q)", run.ImportInfo.File, resolvedPath, path)
 	}
 	events := s.dispatch(request("runs.events", `{"runId":"`+run.ID+`"}`)).Result.(Page[model.Event])
 	if events.Items[0].Evidence.Line != 2 {
