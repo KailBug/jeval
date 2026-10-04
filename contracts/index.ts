@@ -41,6 +41,34 @@ export interface ImportResult {
   run: Run
   replaced: boolean
 }
+export interface ScanStatus {
+  id: string
+  root: string
+  state: 'running' | 'cancelling' | 'completed' | 'cancelled' | 'limited'
+  phase: 'discovery' | 'import'
+  ready: number
+  visited: number
+  discovered: number
+  imported: number
+  updated: number
+  failed: number
+  skipped: number
+  issues: { path: string; message: string }[]
+  message: string
+}
+export interface ScanCandidate {
+  id: string
+  title: string
+  project: string
+  path: string
+  startedAt: string | null
+  eventCount: number
+  warningCount: number
+  preview: string
+  existing: boolean
+  imported: boolean
+  error: string
+}
 export interface RunEvent {
   id: string
   runId: string
@@ -73,12 +101,19 @@ export interface RunQuery {
 }
 export interface EventQuery {
   runId: string
+  search?: string
+  kind?: EventKind | 'all'
   offset?: number
   limit?: number
 }
 export interface DesktopAPI {
   readonly platform: string
   importCodex(): Promise<ImportResult | null>
+  scanCodex(): Promise<ScanStatus | null>
+  scanStatus(id: string): Promise<ScanStatus>
+  cancelScan(id: string): Promise<ScanStatus>
+  scanCandidates(id: string, offset?: number): Promise<Page<ScanCandidate>>
+  importScanSelection(id: string, ids: string[]): Promise<ScanStatus>
   hello(): Promise<Hello>
   listRuns(query: RunQuery): Promise<Page<Run>>
   listEvents(query: EventQuery): Promise<Page<RunEvent>>

@@ -2,15 +2,109 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import { test } from 'node:test'
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile, rm, mkdir, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { EngineClient } from '../../apps/desktop/src/main/engine-client.ts'
-import type { ImportResult, Page, Run, RunEvent } from '../../contracts/index.ts'
+import type {
+  ImportResult,
+  Page,
+  Run,
+  RunEvent,
+  ScanStatus,
+  ScanCandidate
+} from '../../contracts/index.ts'
 
 const executable = resolve(
   'bin',
   process.platform === 'win32' ? 'jeval-engine.exe' : 'jeval-engine'
 )
+
+test('directory discovery requires selection, isolates failures, skips links, and cancels', async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), 'jeval-scan-'))
+  const root = resolve(directory, '中文 目录')
+  const outside = resolve(directory, 'outside')
+  const client = new EngineClient(executable)
+  const waitForScan = async (id: string) => {
+    for (let i = 0; i < 200; i++) {
+      const status = await client.request<ScanStatus>('codex.scan.status', { id })
+      if (status.state !== 'running' && status.state !== 'cancelling') return status
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    throw new Error('scan did not finish')
+  }
+  try {
+    await mkdir(resolve(root, 'nested'), { recursive: true })
+    await mkdir(outside)
+    const fixture = await readFile(resolve('fixtures/adapters/codex/classic.jsonl'))
+    await writeFile(resolve(root, 'nested/session.jsonl'), fixture)
+    await writeFile(resolve(root, 'broken.jsonl'), 'invalid')
+    await writeFile(resolve(outside, 'outside.jsonl'), fixture)
+    await symlink(outside, resolve(root, 'link'), process.platform === 'win32' ? 'junction' : 'dir')
+    await client.start()
+    const first = await client.request<ScanStatus>('codex.scan.start', { path: root })
+    const status = await waitForScan(first.id)
+    assert.equal(status.state, 'completed')
+    assert.equal(status.imported, 0)
+    assert.equal(status.ready, 1)
+    assert.equal(status.failed, 1)
+    assert.equal(status.skipped, 1)
+    assert.equal(status.discovered, 2)
+    assert.equal((await client.request<Page<Run>>('runs.list', { source: 'codex' })).total, 0)
+    const choices = await client.request<Page<ScanCandidate>>('codex.scan.candidates', {
+      id: first.id
+    })
+    await assert.rejects(
+      client.request('codex.scan.import', { id: first.id, ids: ['forged'] }),
+      /INVALID_PARAMS/
+    )
+    await client.request('codex.scan.import', { id: first.id, ids: [choices.items[0].id] })
+    assert.equal((await waitForScan(first.id)).imported, 1)
+    const next = await client.request<ScanStatus>('codex.scan.start', { path: root })
+    assert.equal((await waitForScan(next.id)).updated, 0)
+    await client.request('codex.scan.import', { id: next.id, ids: [choices.items[0].id] })
+    assert.equal((await waitForScan(next.id)).updated, 1)
+    assert.equal((await client.request<Page<Run>>('runs.list', { source: 'codex' })).total, 1)
+    assert.deepEqual(await readFile(resolve(root, 'nested/session.jsonl')), fixture)
+
+    const large = resolve(directory, 'large')
+    await mkdir(large)
+    const message = JSON.stringify({
+      type: 'response_item',
+      payload: { type: 'message', role: 'user', content: 'x'.repeat(7000) }
+    })
+    await writeFile(
+      resolve(large, 'large.jsonl'),
+      fixture.toString().split('\n')[0] + '\n' + (message + '\n').repeat(2000)
+    )
+    const active = await client.request<ScanStatus>('codex.scan.start', { path: large })
+    assert.equal((await client.request<Page<Run>>('runs.list', { source: 'demo' })).total, 3)
+    const cancelled = await client.request<ScanStatus>('codex.scan.cancel', { id: active.id })
+    assert.equal(cancelled.state, 'cancelling')
+    const final = await waitForScan(active.id)
+    assert.equal(final.state, 'cancelled')
+    assert.equal(final.imported, cancelled.imported)
+    assert.equal(final.updated, cancelled.updated)
+    assert.equal(
+      (await client.request<ScanStatus>('codex.scan.cancel', { id: active.id })).state,
+      'cancelled'
+    )
+    const preview = await client.request<ScanStatus>('codex.scan.start', { path: large })
+    assert.equal((await waitForScan(preview.id)).ready, 1)
+    const largeChoices = await client.request<Page<ScanCandidate>>('codex.scan.candidates', {
+      id: preview.id
+    })
+    await client.request('codex.scan.import', { id: preview.id, ids: [largeChoices.items[0].id] })
+    const stopImport = await client.request<ScanStatus>('codex.scan.cancel', { id: preview.id })
+    const stopped = await waitForScan(preview.id)
+    assert.equal(stopped.phase, 'import')
+    assert.equal(stopped.state, 'cancelled')
+    assert.equal(stopped.imported, stopImport.imported)
+    assert.equal((await client.request<Page<Run>>('runs.list', { source: 'codex' })).total, 1)
+  } finally {
+    await client.stop()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 test('Codex imports replace snapshots atomically, preserve evidence, and page large escaped output', async () => {
   const directory = await mkdtemp(resolve(tmpdir(), 'jeval-import-'))
@@ -63,6 +157,25 @@ test('Codex imports replace snapshots atomically, preserve evidence, and page la
     }
     assert.equal(ids.size, 120)
     assert.ok(pages > 2)
+    const tail = JSON.stringify({
+      type: 'response_item',
+      payload: { type: 'message', role: 'user', content: 'unique needle beyond first page' }
+    })
+    await writeFile(
+      path,
+      original.toString().split('\n')[0] + '\n' + (long + '\n').repeat(120) + tail + '\n'
+    )
+    await client.request('codex.import', { path })
+    const found = await client.request<Page<RunEvent>>('runs.events', {
+      runId: first.run.id,
+      search: 'NEEDLE',
+      kind: 'message',
+      limit: 1
+    })
+    assert.equal(found.total, 1)
+    assert.equal(found.items[0].sequence, 121)
+    assert.equal(found.items[0].evidence.line, 122)
+    assert.equal(found.nextOffset, null)
     assert.equal((await client.request<Page<Run>>('runs.list', { source: 'codex' })).total, 1)
     await assert.rejects(client.request('runs.list', { source: 'other' }), /INVALID_PARAMS/)
   } finally {
