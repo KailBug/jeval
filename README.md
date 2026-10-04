@@ -6,7 +6,7 @@
 
 A local desktop workbench for inspecting agent runs. Explore timelines, tool output, and source evidence in one place.
 
-**Early development preview.** Search, filtering, and record inspection currently use synthetic demo data. Codex is the first planned integration; real-log ingestion and Jev analysis are not implemented yet. No API key is needed for the demo.
+**Early development preview.** Browse demo runs or explicitly import a classic Codex rollout JSONL file. Inspect messages, tool results, and source lines locally, without an API key. Imports are held in memory; automatic sync, persistence, and Jev analysis are still planned. Codex release compatibility is not yet verified.
 
 ![jeval desktop preview](docs/design/m0-desktop.png)
 
