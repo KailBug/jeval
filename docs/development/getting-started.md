@@ -16,7 +16,9 @@ npm run dev
 
 ## 导入 Codex 文件
 
-点击“导入 Codex 记录”，选择经典 rollout `.jsonl` 文件。首次体验可选择仓库中的 `fixtures/adapters/codex/classic.jsonl` 合成样本。导入后在 Codex 来源查看记录，展开“导入信息”核对版本、解析提示、会话 ID 和摘要；“查看来源证据”显示导入时的实际文件行号。
+点击“导入 Codex 记录”，选择 classic 或 paginated rollout `.jsonl` 文件。首次体验可选择仓库中的 `fixtures/adapters/codex/classic.jsonl` 或 `paginated.jsonl` 合成样本。导入后在 Codex 来源查看记录，展开“导入信息”核对版本、记录模式、解析提示、会话 ID 和摘要；“查看来源证据”显示导入时的实际文件行号。
+
+窗口顶部箭头支持访问记录和来源的后退/前进，无历史时禁用。若旧目录包提示“仅支持 classic rollout”，关闭旧程序并重新打包/打开最新 exe；修复版已支持用户提供的 Codex 0.160.0 paginated 文件。长内容的 8 KiB 预览提示表示展示被截断，不等于文件导入失败。
 
 取消文件选择不会改变已有记录。相同路径再次导入会更新快照；“刷新记录”仅重新查询当前内存。应用或引擎退出后导入清空，需要重新选择文件。单文件上限 16 MiB / 5000 个事件；尚无目录发现、自动同步或持久化，完整限制见 [Codex 适配器](../adapters/codex.md)。
 
