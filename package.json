@@ -1,0 +1,31 @@
+{
+  "name": "jeval",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "workspaces": [
+    "apps/desktop"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run build:icons && npm run build:engine && npm run dev --workspace @jeval/desktop",
+    "build:icons": "node scripts/build/icons.mjs",
+    "build:engine": "node scripts/build/engine.mjs",
+    "build": "npm run build:icons && npm run build:engine && npm run build --workspace @jeval/desktop",
+    "typecheck": "npm run typecheck --workspace @jeval/desktop",
+    "test:engine": "node scripts/dev/test-engine.mjs",
+    "test:desktop": "tsx --test tests/integration/*.test.ts",
+    "test": "npm run test:engine && npm run build:engine && npm run test:desktop",
+    "check": "npm run typecheck && npm test && npm run build",
+    "pack": "npm run build && npm run pack --workspace @jeval/desktop",
+    "dist:win": "npm run build && npm run dist:win --workspace @jeval/desktop",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "prettier": "^3.8.0",
+    "tsx": "^4.21.0"
+  }
+}
