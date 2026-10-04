@@ -1,16 +1,32 @@
 package model
 
 type Run struct {
-	ID         string  `json:"id"`
-	Title      string  `json:"title"`
-	Project    string  `json:"project"`
-	Source     string  `json:"source"`
-	Demo       bool    `json:"demo"`
-	Status     string  `json:"status"`
-	StartedAt  *string `json:"startedAt"`
-	DurationMs *int64  `json:"durationMs"`
-	Tokens     *int64  `json:"tokens"`
-	EventCount int     `json:"eventCount"`
+	ID         string      `json:"id"`
+	Title      string      `json:"title"`
+	Project    string      `json:"project"`
+	Source     string      `json:"source"`
+	Demo       bool        `json:"demo"`
+	Status     string      `json:"status"`
+	StartedAt  *string     `json:"startedAt"`
+	DurationMs *int64      `json:"durationMs"`
+	Tokens     *int64      `json:"tokens"`
+	EventCount int         `json:"eventCount"`
+	ImportInfo *ImportInfo `json:"importInfo,omitempty"`
+}
+
+type ImportWarning struct {
+	Line    int    `json:"line"`
+	Message string `json:"message"`
+}
+
+type ImportInfo struct {
+	File         string          `json:"file"`
+	SHA256       string          `json:"sha256"`
+	SessionID    string          `json:"sessionId"`
+	CLIVersion   string          `json:"cliVersion"`
+	ForkedFromID string          `json:"forkedFromId,omitempty"`
+	WarningCount int             `json:"warningCount"`
+	Warnings     []ImportWarning `json:"warnings"`
 }
 
 type EvidenceRef struct {

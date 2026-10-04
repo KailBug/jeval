@@ -1,0 +1,9 @@
+{"timestamp":"2026-10-04T01:00:00Z","type":"session_meta","payload":{"id":"synthetic-session-001","timestamp":"2026-10-04T01:00:00Z","cwd":"D:\\示例项目\\demo workspace","cli_version":"synthetic-classic-fixture","forked_from_id":"synthetic-parent-001"}}
+{"timestamp":"2026-10-04T01:00:01Z","type":"event_msg","payload":{"type":"user_message","message":"检查示例项目的测试结果"}}
+{"timestamp":"2026-10-04T01:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"检查示例项目的测试结果"}]}}
+{"timestamp":"2026-10-04T01:00:02Z","type":"response_item","payload":{"type":"function_call","name":"functions.exec_command","arguments":"{\"cmd\":\"go test ./...\"}","call_id":"call-001"}}
+{"timestamp":"2026-10-04T01:00:03Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call-001","output":"FAIL synthetic/example — simulated tool failure\n<script>alert('never execute')</script>"}}
+{"timestamp":"2026-10-04T01:00:04Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"示例测试未通过，需要检查失败原因。"}]}}
+{"timestamp":"2026-10-04T01:00:05Z","type":"event_msg","payload":{"type":"task_complete","last_agent_message":"示例测试未通过，需要检查失败原因。"}}
+{"timestamp":"2026-10-04T01:00:06Z","type":"future_record","payload":{"type":"not_supported"}}
+not-json-synthetic-malformed-line
