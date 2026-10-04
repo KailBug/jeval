@@ -11,7 +11,7 @@ TypeScript 定义位于 `contracts/index.ts`，Go 对应结构位于 `engine/int
 - `evidence` 保存 `sourceId/location/line`；`embedded:` 表示合成证据。真实适配器需要提供实际来源定位，不能复用合成来源标识。
 - `parentId` 保留关联关系，不使用时间相近自动推断因果。
 - `kind=lifecycle` 表示来源回合开始、结束或中止；与 verification 分开，不表示通过验证。Codex 会话仍为 unknown，耗时及 token 暂不映射。
-- Codex 运行带可选 `importInfo`：`file/sha256/sessionId/cliVersion/forkedFromId?/warningCount/warnings`。warnings 保存最多 30 条 `{line,message}`，warningCount 为完整计数。摘要对应实际读取的原始字节，不代表已保存原文件副本。
+- Codex 运行带可选 `importInfo`：`file/sha256/sessionId/cliVersion/historyMode/forkedFromId?/parentThreadId?/warningCount/warnings`。historyMode 为 classic 或 paginated；父线程和分支来源不混用。warnings 保存最多 30 条 `{line,message}`，warningCount 为完整计数。摘要对应实际读取的原始字节，不代表已保存原文件副本。
 - Codex 的 `source=Codex`、`demo=false`；事件 line 为实际文件物理行号，事件 ID 由规范化路径身份和行号组成。标题取第一条非空 user 消息前 80 个字符；正文最多保留 8 KiB 预览，截断有提示。
 - 文本按普通文本渲染，不执行日志中的 HTML、链接或命令。
 

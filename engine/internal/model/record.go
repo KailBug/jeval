@@ -20,13 +20,15 @@ type ImportWarning struct {
 }
 
 type ImportInfo struct {
-	File         string          `json:"file"`
-	SHA256       string          `json:"sha256"`
-	SessionID    string          `json:"sessionId"`
-	CLIVersion   string          `json:"cliVersion"`
-	ForkedFromID string          `json:"forkedFromId,omitempty"`
-	WarningCount int             `json:"warningCount"`
-	Warnings     []ImportWarning `json:"warnings"`
+	File           string          `json:"file"`
+	SHA256         string          `json:"sha256"`
+	SessionID      string          `json:"sessionId"`
+	CLIVersion     string          `json:"cliVersion"`
+	HistoryMode    string          `json:"historyMode"`
+	ParentThreadID string          `json:"parentThreadId,omitempty"`
+	ForkedFromID   string          `json:"forkedFromId,omitempty"`
+	WarningCount   int             `json:"warningCount"`
+	Warnings       []ImportWarning `json:"warnings"`
 }
 
 type EvidenceRef struct {

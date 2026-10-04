@@ -32,4 +32,4 @@
 
 桌面请求默认超时 5 秒，单文件导入为 30 秒，最多 128 个未完成请求。文件选择/导入与重启互斥。超时不是取消；不自动重放导入。连接损坏、子进程退出或输入管道错误时拒绝所有等待中的请求；界面提供显式重启。重启清除所有内存导入记录。关闭时发送 shutdown，最多等候 1.5 秒后终止子进程。
 
-Electron 渲染层只能访问 `hello/listRuns/listEvents/restartEngine/importCodex` 五个业务方法，不提供任意 IPC、路径访问或执行命令能力。`importCodex()` 没有参数，只能由主进程文件选择器提供路径；取消返回 null。主进程校验调用窗口与顶层 frame URL。启用 context isolation、sandbox 和 CSP，拒绝新窗口与页面跳转。依据：[Electron 安全指南](https://www.electronjs.org/docs/latest/tutorial/security)、[electron-vite 构建文档](https://electron-vite.org/guide/build)。
+Electron 渲染层只能访问 `hello/listRuns/listEvents/restartEngine/importCodex` 五个业务方法，以及只读 platform 字符串（标题栏布局使用），不提供任意 IPC、路径访问或执行命令能力。`importCodex()` 没有参数，只能由主进程文件选择器提供路径；取消返回 null。主进程校验调用窗口与顶层 frame URL。启用 context isolation、sandbox 和 CSP，拒绝新窗口与页面跳转。依据：[Electron 安全指南](https://www.electronjs.org/docs/latest/tutorial/security)、[electron-vite 构建文档](https://electron-vite.org/guide/build)。

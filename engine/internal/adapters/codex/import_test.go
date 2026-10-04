@@ -82,7 +82,7 @@ func TestRejectInvalidOrUnsupportedInputs(t *testing.T) {
 	for name, data := range map[string][]byte{
 		"not codex":       []byte(`{"type":"response_item","payload":{"type":"message"}}`),
 		"duplicate meta":  []byte(meta + meta),
-		"paginated":       []byte(`{"type":"session_meta","payload":{"id":"s","history_mode":"paginated"}}`),
+		"unknown history": []byte(`{"type":"session_meta","payload":{"id":"s","history_mode":"future"}}`),
 		"invalid utf8":    append([]byte(meta), 0xff),
 		"too many lines":  []byte(meta + strings.Repeat("\n", 50000)),
 		"too large":       bytes.Repeat([]byte("x"), MaxFileBytes+1),
@@ -106,5 +106,37 @@ func TestWarningsAreBoundedAndEmptySessionIsExplicit(t *testing.T) {
 	run, events, err := Read(input(t, []byte(meta+strings.Repeat("bad\n", 100))))
 	if err != nil || len(events) != 0 || run.ImportInfo.WarningCount != 101 || len(run.ImportInfo.Warnings) != 30 {
 		t.Fatalf("warning bounds: %+v %v", run, err)
+	}
+}
+
+func TestPaginatedMessagesDeduplicateWithinTurnAndPreserveFallbacks(t *testing.T) {
+	data, err := os.ReadFile("../../../../fixtures/adapters/codex/paginated.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, events, err := Read(input(t, data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.ImportInfo.HistoryMode != "paginated" || run.ImportInfo.ParentThreadID != "synthetic-parent-thread" || run.ImportInfo.ForkedFromID != "" {
+		t.Fatalf("incorrect provenance: %+v", run.ImportInfo)
+	}
+	if len(events) != 9 || run.ImportInfo.WarningCount != 0 {
+		t.Fatalf("mapping: %d events, %+v", len(events), run.ImportInfo)
+	}
+	wantLines := []int{2, 3, 6, 7, 8, 14, 15, 16, 17}
+	for i, event := range events {
+		if event.Evidence.Line != wantLines[i] {
+			t.Fatalf("event %d has line %d", i, event.Evidence.Line)
+		}
+	}
+	if events[7].Content != events[1].Content {
+		t.Fatal("repeated prompt in another turn lost")
+	}
+	if events[8].Content != "这是第二个回合的独立消息。" || events[4].ParentID == nil || *events[4].ParentID != events[3].ID {
+		t.Fatal("fallback text or tool relation lost")
+	}
+	if run.Status != "unknown" {
+		t.Fatal("turn completion misclassified as session success")
 	}
 }

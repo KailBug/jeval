@@ -1,0 +1,17 @@
+{"timestamp":"2026-10-04T04:00:00Z","ordinal":0,"type":"session_meta","payload":{"id":"synthetic-paginated","session_id":"synthetic-paginated","timestamp":"2026-10-04T04:00:00Z","cwd":"D:\\示例项目","history_mode":"paginated","cli_version":"synthetic-0.160-shape","parent_thread_id":"synthetic-parent-thread"}}
+{"timestamp":"2026-10-04T04:00:01Z","ordinal":1,"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-a"}}
+{"timestamp":"2026-10-04T04:00:02Z","ordinal":2,"type":"response_item","payload":{"type":"message","id":"user-response-a","role":"user","content":[{"type":"input_text","text":"验证分页记录"}]}}
+{"timestamp":"2026-10-04T04:00:02Z","ordinal":3,"type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-a","item":{"type":"UserMessage","id":"user-projection-a","content":[{"type":"text","text":"验证分页记录"}]}}}
+{"timestamp":"2026-10-04T04:00:03Z","ordinal":4,"type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-a","item":{"type":"AgentMessage","id":"assistant-a","content":[{"type":"Text","text":"收到，开始验证。"}]}}}
+{"timestamp":"2026-10-04T04:00:03Z","ordinal":5,"type":"response_item","payload":{"type":"message","id":"assistant-a","role":"assistant","content":[{"type":"output_text","text":"收到，开始验证。"}]}}
+{"timestamp":"2026-10-04T04:00:04Z","ordinal":6,"type":"response_item","payload":{"type":"function_call","call_id":"tool-a","name":"synthetic_test","arguments":"{}"}}
+{"timestamp":"2026-10-04T04:00:05Z","ordinal":7,"type":"response_item","payload":{"type":"function_call_output","call_id":"tool-a","output":"synthetic pass"}}
+{"timestamp":"2026-10-04T04:00:06Z","ordinal":8,"type":"token_usage_record","payload":{"usage":{"total_tokens":100}}}
+{"timestamp":"2026-10-04T04:00:06Z","ordinal":9,"type":"response_item","payload":{"type":"reasoning","encrypted_content":"synthetic-not-a-real-token"}}
+{"timestamp":"2026-10-04T04:00:06Z","ordinal":10,"type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-a","item":{"type":"Reasoning","id":"reasoning-a","summary_text":[],"raw_content":[]}}}
+{"timestamp":"2026-10-04T04:00:06Z","ordinal":11,"type":"world_state","payload":{"full":true,"state":{}}}
+{"timestamp":"2026-10-04T04:00:06Z","ordinal":12,"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{}}}
+{"timestamp":"2026-10-04T04:00:07Z","ordinal":13,"type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-a"}}
+{"timestamp":"2026-10-04T04:00:08Z","ordinal":14,"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-b"}}
+{"timestamp":"2026-10-04T04:00:09Z","ordinal":15,"type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-b","item":{"type":"UserMessage","id":"user-b","content":[{"type":"text","text":"验证分页记录"}]}}}
+{"timestamp":"2026-10-04T04:00:10Z","ordinal":16,"type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-b","item":{"type":"AgentMessage","id":"assistant-b","content":[{"type":"Text","text":"这是第二个回合的独立消息。"}]}}}
