@@ -1,0 +1,94 @@
+# Node.js dependencies and package-manager caches
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.pnp.*
+
+# TypeScript, frontend and Electron build output
+dist/
+out/
+build/
+release/
+!scripts/build/
+!scripts/release/
+*.tsbuildinfo
+.vite/
+.cache/
+.turbo/
+.eslintcache
+.stylelintcache
+
+# Go binaries, local workspace overrides and test output
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+go.work
+go.work.sum
+coverage.out
+
+# Test coverage and browser-test artifacts
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+
+# Logs and temporary files
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+*.temp
+*.pid
+*.pid.lock
+*.swp
+*.swo
+*~
+
+# Local environment and credentials (keep shareable examples)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local application data (keep fixtures and evaluation datasets trackable)
+/.local/
+/data/
+/apps/desktop/user-data/
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.iml
+*.sublime-workspace
+
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Dependency lockfiles, go.sum, .gitkeep files, fixtures and reports
+# are intentionally retained for reproducible development and review.
