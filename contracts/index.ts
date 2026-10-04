@@ -1,0 +1,62 @@
+export const PROTOCOL_VERSION = 1 as const
+export const RECORD_VERSION = 1 as const
+
+export type RunStatus = 'completed' | 'failed' | 'unknown'
+export type EventKind = 'message' | 'tool_call' | 'tool_result' | 'verification' | 'error'
+export interface EvidenceRef {
+  sourceId: string
+  location: string
+  line: number
+}
+export interface Run {
+  id: string
+  title: string
+  project: string
+  source: string
+  demo: boolean
+  status: RunStatus
+  startedAt: string | null
+  durationMs: number | null
+  tokens: number | null
+  eventCount: number
+}
+export interface RunEvent {
+  id: string
+  runId: string
+  sequence: number
+  kind: EventKind
+  role: string
+  title: string
+  content: string
+  timestamp: string | null
+  parentId: string | null
+  evidence: EvidenceRef
+}
+export interface Page<T> {
+  items: T[]
+  total: number
+  nextOffset: number | null
+}
+export interface Hello {
+  engineVersion: string
+  protocolVersion: number
+  recordVersion: number
+  capabilities: string[]
+}
+export interface RunQuery {
+  search?: string
+  status?: RunStatus | 'all'
+  offset?: number
+  limit?: number
+}
+export interface EventQuery {
+  runId: string
+  offset?: number
+  limit?: number
+}
+export interface DesktopAPI {
+  hello(): Promise<Hello>
+  listRuns(query: RunQuery): Promise<Page<Run>>
+  listEvents(query: EventQuery): Promise<Page<RunEvent>>
+  restartEngine(): Promise<Hello>
+}
