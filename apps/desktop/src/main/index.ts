@@ -95,6 +95,10 @@ function createWindow(): void {
     minHeight: 680,
     backgroundColor: '#f5f5f3',
     title: 'jeval · Agent 工作台',
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 12, y: 13 } }
+      : { titleBarOverlay: { color: '#f5f5f3', symbolColor: '#626560', height: 40 } }),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

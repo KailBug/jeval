@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 
 type IconName =
+  | 'arrow-left'
+  | 'arrow-right'
   | 'library'
   | 'folder'
   | 'terminal'
@@ -16,6 +18,8 @@ type IconName =
   | 'info'
 
 const paths: Record<IconName, ReactNode> = {
+  'arrow-left': <path d="M19 12H5m6-6-6 6 6 6" />,
+  'arrow-right': <path d="M5 12h14m-6-6 6 6-6 6" />,
   library: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="4" />

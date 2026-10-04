@@ -30,6 +30,8 @@ export interface Run {
     sha256: string
     sessionId: string
     cliVersion: string
+    historyMode: 'classic' | 'paginated'
+    parentThreadId?: string
     forkedFromId?: string
     warningCount: number
     warnings: { line: number; message: string }[]
@@ -75,6 +77,7 @@ export interface EventQuery {
   limit?: number
 }
 export interface DesktopAPI {
+  readonly platform: string
   importCodex(): Promise<ImportResult | null>
   hello(): Promise<Hello>
   listRuns(query: RunQuery): Promise<Page<Run>>

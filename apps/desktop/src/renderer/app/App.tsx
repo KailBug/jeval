@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
+import { useBrowseHistory } from './browse-history'
 import logo from '../../../resources/jeval.svg'
 import type { Hello, Page, Run, RunEvent, RunStatus } from '../../../../../contracts/index'
 
@@ -26,7 +27,10 @@ const date = (value: string | null) =>
         hour12: false
       }).format(new Date(value))
     : '时间未知'
-const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
+const errorMessage = (error: unknown) =>
+  (error instanceof Error ? error.message : String(error))
+    .replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '')
+    .replace(/^IMPORT_(?:FAILED|LIMIT):\s*/, '')
 
 function Status({ status }: { status: RunStatus }) {
   return (
@@ -40,14 +44,14 @@ function Status({ status }: { status: RunStatus }) {
 export function App() {
   const [hello, setHello] = useState<Hello>()
   const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<RunStatus | 'all'>('all')
+  const history = useBrowseHistory()
+  const { source, search, status, runId } = history.location
+  const { resolveSelection } = history
   const [runs, setRuns] = useState<Page<Run>>()
-  const [selected, setSelected] = useState<Run>()
+  const selected = runs?.items.find((run) => run.id === runId)
   const [loading, setLoading] = useState(true)
   const [revision, setRevision] = useState(0)
   const [reconnecting, setReconnecting] = useState(false)
-  const [source, setSource] = useState<'demo' | 'codex'>('demo')
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
   const [notice, setNotice] = useState('')
@@ -74,13 +78,14 @@ export function App() {
     if (!hello) return
     let active = true
     setLoading(true)
+    setRuns(undefined)
     const timer = setTimeout(() => {
       window.jeval
         .listRuns({ search, status, source, limit: 100 })
         .then((page) => {
           if (!active) return
           setRuns(page)
-          setSelected((old) => page.items.find((run) => run.id === old?.id) ?? page.items[0])
+          resolveSelection(page.items.map((run) => run.id))
           setError('')
         })
         .catch((e) => {
@@ -94,7 +99,7 @@ export function App() {
       active = false
       clearTimeout(timer)
     }
-  }, [hello, search, status, source, revision])
+  }, [hello, search, status, source, revision, resolveSelection])
 
   async function importCodex() {
     setImporting(true)
@@ -102,10 +107,7 @@ export function App() {
     try {
       const result = await window.jeval.importCodex()
       if (!result) return
-      setSource('codex')
-      setSearch('')
-      setStatus('all')
-      setSelected(result.run)
+      history.navigate({ source: 'codex', runId: result.run.id, search: '', status: 'all' })
       setNotice(`${result.replaced ? '已更新' : '已导入'}记录 · ${result.run.eventCount} 个事件`)
       setRevision((n) => n + 1)
     } catch (e) {
@@ -120,6 +122,7 @@ export function App() {
     setError('')
     try {
       setHello(await window.jeval.restartEngine())
+      history.reset()
       setNotice('引擎已重新连接。本次启动的导入记录已清除，请重新导入。')
       setRevision((n) => n + 1)
     } catch (e) {
@@ -130,206 +133,242 @@ export function App() {
   }
 
   return (
-    <div className="workspace">
-      <aside className="sidebar" aria-label="工作空间">
-        <div className="brand">
-          <img className="brand-logo" src={logo} alt="" width="28" height="28" />
-          <strong>jeval</strong>
-          <span className="alpha">预览版</span>
-        </div>
-        <div className="workspace-label">工作空间</div>
-        <nav aria-label="主导航">
-          <div className="nav-item active" aria-current="page">
-            <Icon name="library" />
-            <span>任务库</span>
-          </div>
+    <>
+      <header
+        className={`window-toolbar ${window.jeval.platform === 'darwin' ? 'mac-toolbar' : ''}`}
+        aria-label="窗口导航"
+      >
+        <nav className="history-controls" aria-label="浏览历史">
+          <button
+            className="icon-button"
+            aria-label="后退"
+            title="后退"
+            disabled={!history.canBack || loading || importing}
+            onClick={() => history.move(-1)}
+          >
+            <Icon name="arrow-left" />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="前进"
+            title="前进"
+            disabled={!history.canForward || loading || importing}
+            onClick={() => history.move(1)}
+          >
+            <Icon name="arrow-right" />
+          </button>
         </nav>
-        <div className="sidebar-section">数据来源</div>
-        <button
-          className={'source-item ' + (source === 'demo' ? 'selected' : '')}
-          aria-pressed={source === 'demo'}
-          onClick={() => setSource('demo')}
-        >
-          <Icon name="folder" />
-          <span>合成演示</span>
-          <span className="source-count">3</span>
-        </button>
-        <button
-          className={'source-item ' + (source === 'codex' ? 'selected' : '')}
-          aria-pressed={source === 'codex'}
-          onClick={() => setSource('codex')}
-        >
-          <Icon name="terminal" />
-          <span>Codex</span>
-          <span className="source-count">本地</span>
-        </button>
-        <div className="sidebar-bottom">
-          <div className="local-label">
-            <span className={hello && !error ? 'source-dot' : 'offline-dot'} />
-            {hello && !error ? '本地引擎已连接' : '引擎连接待检查'}
+      </header>
+      <div className="workspace">
+        <aside className="sidebar" aria-label="工作空间">
+          <div className="brand">
+            <img className="brand-logo" src={logo} alt="" width="28" height="28" />
+            <strong>jeval</strong>
+            <span className="alpha">预览版</span>
           </div>
-          <span className="version">{hello?.engineVersion ?? '正在连接'}</span>
-        </div>
-      </aside>
-      <main>
-        <header className="topbar">
-          <div className="topbar-heading">
-            <h1>任务库</h1>
-            <span className="preview-label">{source === 'demo' ? '演示空间' : 'Codex 记录'}</span>
+          <div className="workspace-label">工作空间</div>
+          <nav aria-label="主导航">
+            <div className="nav-item active" aria-current="page">
+              <Icon name="library" />
+              <span>任务库</span>
+            </div>
+          </nav>
+          <div className="sidebar-section">数据来源</div>
+          <button
+            className={'source-item ' + (source === 'demo' ? 'selected' : '')}
+            aria-pressed={source === 'demo'}
+            onClick={() =>
+              source !== 'demo' && history.navigate({ source: 'demo', search: '', status: 'all' })
+            }
+          >
+            <Icon name="folder" />
+            <span>合成演示</span>
+            <span className="source-count">3</span>
+          </button>
+          <button
+            className={'source-item ' + (source === 'codex' ? 'selected' : '')}
+            aria-pressed={source === 'codex'}
+            onClick={() =>
+              source !== 'codex' && history.navigate({ source: 'codex', search: '', status: 'all' })
+            }
+          >
+            <Icon name="terminal" />
+            <span>Codex</span>
+            <span className="source-count">本地</span>
+          </button>
+          <div className="sidebar-bottom">
+            <div className="local-label">
+              <span className={hello && !error ? 'source-dot' : 'offline-dot'} />
+              {hello && !error ? '本地引擎已连接' : '引擎连接待检查'}
+            </div>
+            <span className="version">{hello?.engineVersion ?? '正在连接'}</span>
           </div>
-          <div className="topbar-actions">
-            <span className="local-pill">
-              <Icon name="monitor" />
-              本地
-            </span>
-            <button
-              className="button"
-              onClick={importCodex}
-              disabled={!hello || importing || reconnecting}
-            >
-              <Icon name="folder" />
-              {importing ? '正在导入…' : '导入 Codex 记录'}
-            </button>
-            <button className="button" onClick={() => setRevision((n) => n + 1)} disabled={loading}>
-              <Icon name="refresh" />
-              刷新记录
-            </button>
-          </div>
-        </header>
-        <div className="demo-banner">
-          <Icon name="info" />
-          <span>
-            {source === 'demo'
-              ? '当前为合成演示。可选择 Codex JSONL 文件，查看本地执行记录。'
-              : '仅在本地读取所选文件。本次导入保留到应用或引擎退出；文件更新后需重新导入。'}
-          </span>
-        </div>
-        {notice && (
-          <div className="import-notice" role="status">
-            <span>{notice}</span>
-            <button className="text-button" onClick={() => setNotice('')}>
-              关闭提示
-            </button>
-          </div>
-        )}
-        {importError && (
-          <div className="error-banner" role="alert">
-            <Icon name="alert" />
-            <span>{importError}</span>
-            <button className="text-button" onClick={() => setImportError('')}>
-              关闭提示
-            </button>
-          </div>
-        )}
-        {error && (
-          <div className="error-banner" role="alert">
-            <Icon name="alert" />
-            <span>{error}</span>
-            <button className="button" onClick={reconnect} disabled={reconnecting}>
-              {reconnecting ? '连接中…' : '重新连接引擎'}
-            </button>
-          </div>
-        )}
-        <section className="library" aria-label="任务库">
-          <div className="library-body" aria-busy={loading}>
-            <section className="run-panel" aria-label="运行列表">
-              <div className="library-toolbar">
-                <div className="list-heading">
-                  <h2>
-                    最近执行 <span>{runs?.total ?? '—'}</span>
-                  </h2>
-                  <select
-                    aria-label="筛选状态"
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value as RunStatus | 'all')}
-                  >
-                    <option value="all">全部状态</option>
-                    <option value="completed">已完成</option>
-                    <option value="failed">失败</option>
-                    <option value="unknown">状态未知</option>
-                  </select>
-                </div>
-                <label className="search">
-                  <Icon name="search" />
-                  <input
-                    aria-label="搜索任务"
-                    placeholder="搜索任务或项目"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    maxLength={200}
-                  />
-                </label>
-              </div>
-              <div className="run-list">
-                {loading && (
-                  <div className="list-caption" role="status">
-                    加载中…
-                  </div>
-                )}
-                {!loading && runs?.items.length === 0 && (
-                  <div className="empty">
-                    <Icon name="search" />
-                    <strong>
-                      {source === 'codex' && !search && status === 'all'
-                        ? '还没有 Codex 记录'
-                        : '没有匹配的记录'}
-                    </strong>
-                    <p>
-                      {source === 'codex' && !search && status === 'all'
-                        ? '点击右上角导入，选择一个 rollout JSONL 文件。'
-                        : '试试其他关键词或状态。'}
-                    </p>
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        setSearch('')
-                        setStatus('all')
-                      }}
-                    >
-                      清除筛选
-                    </button>
-                  </div>
-                )}
-                {runs?.items.map((run) => (
-                  <button
-                    key={run.id}
-                    className={'run-card ' + (run.id === selected?.id ? 'selected' : '')}
-                    aria-pressed={run.id === selected?.id}
-                    onClick={() => setSelected(run)}
-                  >
-                    <div className="run-card-meta">
-                      <Icon name="folder" />
-                      <span>{run.project}</span>
-                    </div>
-                    <h3>{run.title}</h3>
-                    <div className="run-card-footer">
-                      <Status status={run.status} />
-                      <time>{date(run.startedAt)}</time>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <div className="list-footer">
+        </aside>
+        <main>
+          <header className="topbar">
+            <div className="topbar-heading">
+              <h1>任务库</h1>
+              <span className="preview-label">{source === 'demo' ? '演示空间' : 'Codex 记录'}</span>
+            </div>
+            <div className="topbar-actions">
+              <span className="local-pill">
                 <Icon name="monitor" />
-                <span>本地浏览，无需 API key</span>
-              </div>
-            </section>
-            {selected ? (
-              <RunDetail
-                key={selected.id + ':' + (selected.importInfo?.sha256 ?? '') + ':' + revision}
-                run={selected}
-              />
-            ) : (
-              <div className="detail-empty">
-                <Icon name="library" />
-                <h2>{loading ? '正在连接工作台' : '选择一条执行记录'}</h2>
-                <p>{loading ? '正在加载记录…' : '查看任务的执行过程与来源证据。'}</p>
-              </div>
-            )}
+                本地
+              </span>
+              <button
+                className="button"
+                onClick={importCodex}
+                disabled={!hello || importing || reconnecting}
+              >
+                <Icon name="folder" />
+                {importing ? '正在导入…' : '导入 Codex 记录'}
+              </button>
+              <button
+                className="button"
+                onClick={() => setRevision((n) => n + 1)}
+                disabled={loading}
+              >
+                <Icon name="refresh" />
+                刷新记录
+              </button>
+            </div>
+          </header>
+          <div className="demo-banner">
+            <Icon name="info" />
+            <span>
+              {source === 'demo'
+                ? '当前为合成演示。可选择 Codex JSONL 文件，查看本地执行记录。'
+                : '仅在本地读取所选文件。本次导入保留到应用或引擎退出；文件更新后需重新导入。'}
+            </span>
           </div>
-        </section>
-      </main>
-    </div>
+          {notice && (
+            <div className="import-notice" role="status">
+              <span>{notice}</span>
+              <button className="text-button" onClick={() => setNotice('')}>
+                关闭提示
+              </button>
+            </div>
+          )}
+          {importError && (
+            <div className="error-banner" role="alert">
+              <Icon name="alert" />
+              <span>{importError}</span>
+              <button className="text-button" onClick={() => setImportError('')}>
+                关闭提示
+              </button>
+            </div>
+          )}
+          {error && (
+            <div className="error-banner" role="alert">
+              <Icon name="alert" />
+              <span>{error}</span>
+              <button className="button" onClick={reconnect} disabled={reconnecting}>
+                {reconnecting ? '连接中…' : '重新连接引擎'}
+              </button>
+            </div>
+          )}
+          <section className="library" aria-label="任务库">
+            <div className="library-body" aria-busy={loading}>
+              <section className="run-panel" aria-label="运行列表">
+                <div className="library-toolbar">
+                  <div className="list-heading">
+                    <h2>
+                      最近执行 <span>{runs?.total ?? '—'}</span>
+                    </h2>
+                    <select
+                      aria-label="筛选状态"
+                      value={status}
+                      onChange={(event) =>
+                        history.update({ status: event.target.value as RunStatus | 'all' })
+                      }
+                    >
+                      <option value="all">全部状态</option>
+                      <option value="completed">已完成</option>
+                      <option value="failed">失败</option>
+                      <option value="unknown">状态未知</option>
+                    </select>
+                  </div>
+                  <label className="search">
+                    <Icon name="search" />
+                    <input
+                      aria-label="搜索任务"
+                      placeholder="搜索任务或项目"
+                      value={search}
+                      onChange={(event) => history.update({ search: event.target.value })}
+                      maxLength={200}
+                    />
+                  </label>
+                </div>
+                <div className="run-list">
+                  {loading && (
+                    <div className="list-caption" role="status">
+                      加载中…
+                    </div>
+                  )}
+                  {!loading && runs?.items.length === 0 && (
+                    <div className="empty">
+                      <Icon name="search" />
+                      <strong>
+                        {source === 'codex' && !search && status === 'all'
+                          ? '还没有 Codex 记录'
+                          : '没有匹配的记录'}
+                      </strong>
+                      <p>
+                        {source === 'codex' && !search && status === 'all'
+                          ? '点击右上角导入，选择一个 rollout JSONL 文件。'
+                          : '试试其他关键词或状态。'}
+                      </p>
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          history.update({ search: '', status: 'all' })
+                        }}
+                      >
+                        清除筛选
+                      </button>
+                    </div>
+                  )}
+                  {runs?.items.map((run) => (
+                    <button
+                      key={run.id}
+                      className={'run-card ' + (run.id === selected?.id ? 'selected' : '')}
+                      aria-pressed={run.id === selected?.id}
+                      onClick={() => history.navigate({ ...history.location, runId: run.id })}
+                    >
+                      <div className="run-card-meta">
+                        <Icon name="folder" />
+                        <span>{run.project}</span>
+                      </div>
+                      <h3>{run.title}</h3>
+                      <div className="run-card-footer">
+                        <Status status={run.status} />
+                        <time>{date(run.startedAt)}</time>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="list-footer">
+                  <Icon name="monitor" />
+                  <span>本地浏览，无需 API key</span>
+                </div>
+              </section>
+              {selected ? (
+                <RunDetail
+                  key={selected.id + ':' + (selected.importInfo?.sha256 ?? '') + ':' + revision}
+                  run={selected}
+                />
+              ) : (
+                <div className="detail-empty">
+                  <Icon name="library" />
+                  <h2>{loading ? '正在连接工作台' : '选择一条执行记录'}</h2>
+                  <p>{loading ? '正在加载记录…' : '查看任务的执行过程与来源证据。'}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </main>
+      </div>
+    </>
   )
 }
 
@@ -405,8 +444,16 @@ function RunDetail({ run }: { run: Run }) {
               <dd>{run.importInfo.file}</dd>
               <dt>来源版本</dt>
               <dd>{run.importInfo.cliVersion || '未提供'}</dd>
+              <dt>记录模式</dt>
+              <dd>{run.importInfo.historyMode}</dd>
               <dt>会话 ID</dt>
               <dd>{run.importInfo.sessionId}</dd>
+              {run.importInfo.parentThreadId && (
+                <>
+                  <dt>父线程</dt>
+                  <dd>{run.importInfo.parentThreadId}</dd>
+                </>
+              )}
               {run.importInfo.forkedFromId && (
                 <>
                   <dt>分支来源</dt>
