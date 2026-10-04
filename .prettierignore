@@ -1,0 +1,8 @@
+node_modules
+package-lock.json
+bin
+release
+apps/desktop/out
+test-results
+.local
+docs/jeval-development-plan.md
