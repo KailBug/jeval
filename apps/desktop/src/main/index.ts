@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './engine-client'
-import type { Hello } from '../../../../contracts/index'
+import type { Hello, ScanStatus } from '../../../../contracts/index'
 
 let engine: EngineClient
 let ready: Promise<Hello>
@@ -10,10 +10,12 @@ let restarting: Promise<Hello> | undefined
 let quitting = false
 let window: BrowserWindow | undefined
 let importing = false
+let scanID: string | undefined
 const rendererFile = join(__dirname, '../renderer/index.html')
 const developmentURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
 
 function startEngine(): Promise<Hello> {
+  scanID = undefined
   const executable = process.platform === 'win32' ? 'jeval-engine.exe' : 'jeval-engine'
   const enginePath = app.isPackaged
     ? join(process.resourcesPath, 'engine', executable)
@@ -25,12 +27,84 @@ function startEngine(): Promise<Hello> {
 }
 
 function registerIPC(): void {
+  const scanRequest = async (method: string, id: unknown) => {
+    if (typeof id !== 'string' || id !== scanID) throw new Error('扫描不存在或引擎已重启')
+    await ready
+    return engine.request<ScanStatus>(method, { id })
+  }
+  const ensureScanIdle = async () => {
+    if (!scanID) return
+    const status = await scanRequest('codex.scan.status', scanID)
+    if (status.state === 'running' || status.state === 'cancelling')
+      throw new Error('请等待当前扫描完成或取消扫描')
+  }
   const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
+    'jeval:scan-codex': async () => {
+      if (!window || importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        await ensureScanIdle()
+        const selection = await dialog.showOpenDialog(window, {
+          title: '选择 Codex 记录目录',
+          properties: ['openDirectory']
+        })
+        if (selection.canceled || !selection.filePaths[0]) return null
+        const status = await engine.request<ScanStatus>('codex.scan.start', {
+          path: selection.filePaths[0]
+        })
+        scanID = status.id
+        return status
+      } finally {
+        importing = false
+      }
+    },
+    'jeval:scan-status': (id) => scanRequest('codex.scan.status', id),
+    'jeval:scan-cancel': (id) => scanRequest('codex.scan.cancel', id),
+    'jeval:scan-candidates': async (params) => {
+      const query = params as { id?: unknown; offset?: unknown } | null
+      if (
+        !query ||
+        query.id !== scanID ||
+        typeof query.id !== 'string' ||
+        !Number.isInteger(query.offset) ||
+        (query.offset as number) < 0
+      )
+        throw new Error('无效的候选查询')
+      await ready
+      return engine.request('codex.scan.candidates', {
+        id: query.id,
+        offset: query.offset,
+        limit: 50
+      })
+    },
+    'jeval:scan-import': async (params) => {
+      const selection = params as { id?: unknown; ids?: unknown } | null
+      if (
+        !selection ||
+        typeof selection.id !== 'string' ||
+        selection.id !== scanID ||
+        !Array.isArray(selection.ids) ||
+        selection.ids.length === 0 ||
+        selection.ids.length > 200 ||
+        !selection.ids.every((id) => typeof id === 'string' && id.length <= 128)
+      )
+        throw new Error('无效的候选选择')
+      if (importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        return await engine.request('codex.scan.import', { id: selection.id, ids: selection.ids })
+      } finally {
+        importing = false
+      }
+    },
     'jeval:import-codex': async () => {
       if (!window || importing || restarting) throw new Error('请等待当前操作完成')
       importing = true
       try {
         await ready
+        await ensureScanIdle()
         const selection = await dialog.showOpenDialog(window, {
           title: '导入 Codex 记录',
           properties: ['openFile'],

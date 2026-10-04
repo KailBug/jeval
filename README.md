@@ -6,7 +6,7 @@
 
 A local desktop workbench for inspecting agent runs. Explore timelines, tool output, and source evidence in one place.
 
-**Early development preview.** Browse demo runs or import classic/paginated Codex rollout JSONL files. Inspect messages, tool results, and source lines locally, without an API key. Imports are held in memory; automatic sync, persistence, and Jev analysis are still planned. One Codex 0.160.0 recording has been validated; broader compatibility is still being tested.
+**Early development preview.** Scan a Codex directory, browse the discovered records, and choose which to import—or select all. Scanning alone never adds records. Single-file classic/paginated JSONL import is also available. Search record content, filter event types, and inspect source evidence locally without an API key. Imports are held in memory; persistence, automatic sync, and Jev analysis are still planned. Directory selection and search are tested with synthetic samples; one Codex 0.160.0 recording was previously validated.
 
 ![jeval desktop preview](docs/design/m0-desktop.png)
 

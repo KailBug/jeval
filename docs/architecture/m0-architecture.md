@@ -8,12 +8,14 @@ React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC
 
 | 模块 | 当前职责 | 代码入口 |
 | --- | --- | --- |
-| 渲染层 | 搜索与状态筛选、选中运行、时间线、按需展开工具输出、证据面板 | [App.tsx](../../apps/desktop/src/renderer/app/App.tsx) |
-| preload | 仅暴露 hello、listRuns、listEvents、restartEngine、无参数的 importCodex | [preload/index.ts](../../apps/desktop/src/preload/index.ts) |
+| 渲染层 | 任务搜索、记录内搜索/类型筛选、时间线、输出与证据面板 | [App.tsx](../../apps/desktop/src/renderer/app/App.tsx) |
+| 候选选择窗口 | 原生 dialog 模态焦点、候选分页读取、搜索/概要、默认不选、批量确认 | [ScanPicker.tsx](../../apps/desktop/src/renderer/app/ScanPicker.tsx) |
+| preload | 暴露握手、查询、重启、无参数的文件/目录选择，以及扫描状态与取消 | [preload/index.ts](../../apps/desktop/src/preload/index.ts) |
 | 主进程 | 窗口、系统文件选择、IPC 来源检查、引擎路径、启动与退出 | [main/index.ts](../../apps/desktop/src/main/index.ts) |
 | EngineClient | 握手、请求 ID、分包响应、超时、进程失败与停止 | [engine-client.ts](../../apps/desktop/src/main/engine-client.ts) |
 | Go 引擎入口 | 加载 embed 样例并运行协议服务 | [main.go](../../engine/cmd/jeval-engine/main.go) |
 | Go 协议服务 | 请求检查、运行搜索、事件分页、结构化错误和 shutdown | [server.go](../../engine/internal/protocol/server.go) |
+| 目录扫描服务 | 单个后台扫描、分批遍历、协作取消、状态快照和内存更新互斥 | [scan.go](../../engine/internal/protocol/scan.go) |
 | Codex 适配器 | 有界只读快照、消息/工具映射、物理行号与摘要、解析提示 | [import.go](../../engine/internal/adapters/codex/import.go) |
 | 数据与类型 | Run/Event 草案和三条合成记录 | [Go 模型](../../engine/internal/model/record.go)、[TS 类型](../../contracts/index.ts)、[样例](../../engine/internal/demo/records.json) |
 
@@ -43,4 +45,12 @@ SQLite 驱动和许可证仍待确定。当前来源身份使用规范化路径�
 
 窗口采用隐藏原生标题文字与原生窗口按钮覆盖层，渲染端只负责拖动区域和浏览历史箭头。preload 额外暴露只读 platform 字符串用于避让 macOS 控件，无新增窗口控制或通用 IPC 权限。浏览历史为渲染层内存状态，不调用页面后退或加载外部 URL。
 
-引擎故障目前通过请求失败传递给界面；尚无主动推送健康通知、扫描进度、取消扫描或数据落盘机制。端到端测试验证显式重启，尚未覆盖强制崩溃后的完整 UI 恢复流程。
+`scanCodex()` 不接受路径，由主进程目录选择器授权范围。发现任务在 Go goroutine 中读取候选，只保存摘要、路径身份、字节摘要和有限预览，丢弃事件，不修改任务库。渲染端通过 `scanCandidates` 分页读取并在二级模态窗口选择，`importScanSelection` 只传当前扫描的候选 ID；主进程校验扫描 ID，Go 校验候选集合、重复/已消费 ID 和整体配额。
+
+确认后后台重新读取所选文件，对比身份与字节摘要，变化则拒绝该项并要求重扫。遍历和解析在锁外，发布、统计、查询和取消确认共用锁，成功项复用单文件替换逻辑。新扫描替换旧候选和 ID；候选不持久化。目录分批读取、跳过子链接，扫描和任务库配额分开，详见适配器说明。
+
+采用 300ms 状态轮询，`phase` 区分发现/导入，状态仅保留当前扫描；ID 跨重启随机生成。发现结束弹出选择窗口，导入结束刷新列表；状态失败保留最后已知状态、重试并提供重连入口，模态窗口内也可恢复。退出/重启取消任务，底层阻塞读取不承诺即时中断。
+
+事件搜索由 Go 在当前快照全量事件上按关键词和类型筛选后分页，保留原始 ID/序号/证据。渲染层延迟 150ms 查询，筛选变化清空旧页，使用查询标识与代次忽略迟到的加载更多响应；不读取源文件的预览截断部分。
+
+引擎故障目前通过请求失败传递给界面；尚无主动推送健康通知或数据落盘机制。端到端测试验证显式重启，尚未覆盖强制崩溃后的完整 UI 恢复流程。

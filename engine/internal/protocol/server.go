@@ -37,6 +37,7 @@ type query struct {
 	Status string `json:"status"`
 	Source string `json:"source"`
 	RunID  string `json:"runId"`
+	Kind   string `json:"kind"`
 	Offset int    `json:"offset"`
 	Limit  *int   `json:"limit"`
 }
@@ -91,7 +92,7 @@ func dispatchRecord(req Request, record *model.Record) Response {
 	res := Response{Type: "response", Version: Version, ID: req.ID}
 	switch req.Method {
 	case "hello":
-		res.Result = map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": []string{"demo", "runs.list", "runs.events", "codex.import"}}
+		res.Result = map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": []string{"demo", "runs.list", "runs.events", "codex.import", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}}
 		return res
 	case "codex.import":
 		var params struct {
@@ -104,33 +105,11 @@ func dispatchRecord(req Request, record *model.Record) Response {
 		if err != nil {
 			return failure(req.ID, "IMPORT_FAILED", err.Error())
 		}
-		index, imported, eventCount := -1, 0, len(events)
-		for i, old := range record.Runs {
-			if old.ID == run.ID {
-				index = i
-			} else {
-				eventCount += old.EventCount
-				if !old.Demo {
-					imported++
-				}
-			}
+		replaced, err := replaceRun(record, run, events)
+		if err != nil {
+			return failure(req.ID, "IMPORT_LIMIT", err.Error())
 		}
-		if imported >= 20 || eventCount > 50000 {
-			return failure(req.ID, "IMPORT_LIMIT", "本次启动最多导入 20 个文件、50000 个事件，请重启后重新选择")
-		}
-		retained := make([]model.Event, 0, eventCount)
-		for _, event := range record.Events {
-			if event.RunID != run.ID {
-				retained = append(retained, event)
-			}
-		}
-		record.Events = append(retained, events...)
-		if index >= 0 {
-			record.Runs[index] = run
-		} else {
-			record.Runs = append(record.Runs, run)
-		}
-		res.Result = map[string]any{"run": run, "replaced": index >= 0}
+		res.Result = map[string]any{"run": run, "replaced": replaced}
 		return res
 	case "shutdown":
 		res.Result = map[string]bool{"ok": true}
@@ -175,6 +154,11 @@ func dispatchRecord(req Request, record *model.Record) Response {
 		}
 		res.Result = paginate(items, q.Offset, limit)
 	} else {
+		switch q.Kind {
+		case "", "all", "message", "tool_call", "tool_result", "verification", "lifecycle", "error":
+		default:
+			return failure(req.ID, "INVALID_PARAMS", "Unsupported event kind")
+		}
 		found := false
 		for _, run := range record.Runs {
 			if run.ID == q.RunID {
@@ -186,8 +170,9 @@ func dispatchRecord(req Request, record *model.Record) Response {
 			return failure(req.ID, "NOT_FOUND", "Run not found")
 		}
 		items := make([]model.Event, 0)
+		search := strings.ToLower(strings.TrimSpace(q.Search))
 		for _, event := range record.Events {
-			if event.RunID == q.RunID {
+			if event.RunID == q.RunID && (q.Kind == "" || q.Kind == "all" || q.Kind == event.Kind) && strings.Contains(strings.ToLower(event.Title+" "+event.Content+" "+event.Role), search) {
 				items = append(items, event)
 			}
 		}
@@ -199,6 +184,8 @@ func dispatchRecord(req Request, record *model.Record) Response {
 // Serve keeps stdout exclusively for protocol frames. An oversized frame ends the
 // connection; malformed JSON returns an error and leaves subsequent requests usable.
 func Serve(input io.Reader, output io.Writer, record model.Record) error {
+	service := &scanService{record: record}
+	defer service.close()
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 4096), MaxFrameBytes)
 	encoder := json.NewEncoder(output)
@@ -210,7 +197,7 @@ func Serve(input io.Reader, output io.Writer, record model.Record) error {
 			}
 			continue
 		}
-		res := dispatchRecord(req, &record)
+		res := service.dispatch(req)
 		if err := encoder.Encode(res); err != nil {
 			return err
 		}
@@ -222,4 +209,34 @@ func Serve(input io.Reader, output io.Writer, record model.Record) error {
 		return fmt.Errorf("read protocol frame: %w", err)
 	}
 	return nil
+}
+
+func replaceRun(record *model.Record, run model.Run, events []model.Event) (bool, error) {
+	index, imported, eventCount := -1, 0, len(events)
+	for i, old := range record.Runs {
+		if old.ID == run.ID {
+			index = i
+		} else {
+			eventCount += old.EventCount
+			if !old.Demo {
+				imported++
+			}
+		}
+	}
+	if imported >= 20 || eventCount > 50000 {
+		return false, fmt.Errorf("本次启动最多导入 20 个文件、50000 个事件，请重启后重新选择")
+	}
+	retained := make([]model.Event, 0, eventCount)
+	for _, event := range record.Events {
+		if event.RunID != run.ID {
+			retained = append(retained, event)
+		}
+	}
+	record.Events = append(retained, events...)
+	if index >= 0 {
+		record.Runs[index] = run
+	} else {
+		record.Runs = append(record.Runs, run)
+	}
+	return index >= 0, nil
 }

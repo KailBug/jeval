@@ -922,3 +922,246 @@ pre,
     scroll-behavior: auto !important;
   }
 }
+
+.scan-panel {
+  flex-shrink: 0;
+  margin: 0 var(--space-6) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 220px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.scan-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.scan-panel p {
+  margin: 4px 0;
+}
+.scan-root {
+  color: var(--secondary);
+}
+.scan-panel ul {
+  padding-left: 20px;
+}
+.scan-panel li {
+  margin-top: 8px;
+}
+.scan-panel li span {
+  font-weight: 500;
+}
+.scan-panel summary {
+  cursor: pointer;
+}
+.scan-dialog {
+  width: min(960px, calc(100vw - 64px));
+  max-height: calc(100vh - 88px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 24px 80px #0003;
+}
+.scan-dialog::backdrop {
+  background: #20242066;
+}
+.scan-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  height: min(760px, calc(100vh - 88px));
+  overflow: hidden;
+}
+.scan-dialog-header,
+.scan-dialog-root,
+.scan-picker-tools,
+.scan-dialog-footer,
+.scan-picker-issues,
+.scan-dialog-message {
+  flex-shrink: 0;
+}
+.scan-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 8px;
+}
+.scan-dialog h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.scan-dialog-header p {
+  margin: 8px 0 0;
+  color: var(--secondary);
+  font-size: 13px;
+}
+.scan-dialog-root {
+  margin: 0 24px 16px;
+  color: var(--secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.scan-picker-tools {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px 16px;
+  font-size: 13px;
+}
+.scan-picker-tools > input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+.scan-picker-tools label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scan-dialog input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--text);
+}
+.scan-picker-body {
+  display: grid;
+  grid-template-columns: 45% 55%;
+  flex: 1;
+  min-height: 0;
+  border-block: 1px solid var(--line);
+}
+.scan-candidate-list,
+.scan-candidate-detail {
+  min-width: 0;
+  overflow: auto;
+}
+.scan-candidate-list {
+  border-right: 1px solid var(--line);
+  padding: 8px;
+}
+.scan-candidate {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 10px;
+}
+.scan-candidate.focused {
+  background: var(--selected);
+}
+.scan-candidate > input {
+  margin-top: 5px;
+}
+.candidate-preview {
+  text-align: left;
+  min-width: 0;
+  padding: 0;
+  flex: 1;
+}
+.candidate-preview strong,
+.candidate-preview span,
+.candidate-preview small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.candidate-preview strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.candidate-preview span,
+.candidate-preview small {
+  font-size: 12px;
+  color: var(--secondary);
+  margin-top: 4px;
+}
+.scan-candidate-detail {
+  padding: 20px 24px;
+}
+.scan-candidate-detail h3 {
+  font-size: 16px;
+  margin-top: 0;
+}
+.scan-candidate-detail dl {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.scan-candidate-detail dt {
+  margin-top: 12px;
+  color: var(--secondary);
+}
+.scan-candidate-detail dd {
+  margin: 2px 0 0;
+}
+.scan-candidate-detail h4 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.scan-candidate-detail pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.scan-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  font-size: 12px;
+  color: var(--secondary);
+}
+.scan-picker-issues {
+  margin: 12px 24px;
+  font-size: 12px;
+  max-height: 100px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.scan-dialog-message {
+  margin: 8px 24px;
+  font-size: 13px;
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+.event-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.event-filters input,
+.event-filters select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface-subtle);
+  font-size: 13px;
+}
+.event-filters input {
+  min-width: 0;
+  flex: 1;
+}
+.event-search-hint,
+.event-match-count {
+  font-size: 12px;
+  color: var(--secondary);
+  margin: 8px 0 16px;
+}
+.event-search-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--secondary);
+}

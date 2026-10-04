@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { useBrowseHistory } from './browse-history'
+import { ScanPicker } from './ScanPicker'
 import logo from '../../../resources/jeval.svg'
-import type { Hello, Page, Run, RunEvent, RunStatus } from '../../../../../contracts/index'
+import type {
+  Hello,
+  Page,
+  Run,
+  RunEvent,
+  RunStatus,
+  ScanStatus
+} from '../../../../../contracts/index'
 
 const statusLabels: Record<RunStatus, string> = {
   completed: '已完成',
@@ -55,6 +63,73 @@ export function App() {
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
   const [notice, setNotice] = useState('')
+  const [scan, setScan] = useState<ScanStatus>()
+  const [choosingDirectory, setChoosingDirectory] = useState(false)
+  const [scanError, setScanError] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const scanning = scan?.state === 'running' || scan?.state === 'cancelling'
+
+  useEffect(() => {
+    if (!scan || !scanning) return
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+    const poll = async () => {
+      try {
+        const next = await window.jeval.scanStatus(scan.id)
+        if (!active) return
+        setScan(next)
+        setScanError('')
+        if (next.state === 'running' || next.state === 'cancelling') {
+          timer = setTimeout(poll, 300)
+        } else {
+          if (next.phase === 'discovery') setPickerOpen(true)
+          else setRevision((n) => n + 1)
+        }
+      } catch (e) {
+        if (active) {
+          setScanError(errorMessage(e))
+          // Preserve the last known state; a timeout doesn't mean the job stopped.
+          timer = setTimeout(poll, 1500)
+        }
+      }
+    }
+    void poll()
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [scan?.id, scan?.phase, scanning])
+
+  async function scanCodex() {
+    setChoosingDirectory(true)
+    setImportError('')
+    try {
+      const result = await window.jeval.scanCodex()
+      if (!result) return
+      setScan(result)
+      setPickerOpen(false)
+      setScanError('')
+      setNotice('')
+    } catch (e) {
+      setImportError(errorMessage(e))
+    } finally {
+      setChoosingDirectory(false)
+    }
+  }
+
+  async function cancelScan() {
+    if (!scan) return
+    try {
+      const next = await window.jeval.cancelScan(scan.id)
+      setScan(next)
+      if (next.state !== 'running' && next.state !== 'cancelling') {
+        if (next.phase === 'discovery') setPickerOpen(true)
+        else setRevision((n) => n + 1)
+      }
+    } catch (e) {
+      setScanError(errorMessage(e))
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -122,6 +197,9 @@ export function App() {
     setError('')
     try {
       setHello(await window.jeval.restartEngine())
+      setScan(undefined)
+      setPickerOpen(false)
+      setScanError('')
       history.reset()
       setNotice('引擎已重新连接。本次启动的导入记录已清除，请重新导入。')
       setRevision((n) => n + 1)
@@ -134,6 +212,20 @@ export function App() {
 
   return (
     <>
+      {pickerOpen && scan && (
+        <ScanPicker
+          scan={scan}
+          onStatus={(next) => {
+            setScan(next)
+            history.navigate({ source: 'codex', search: '', status: 'all' })
+          }}
+          onClose={() => setPickerOpen(false)}
+          onCancel={cancelScan}
+          statusError={scanError}
+          onReconnect={reconnect}
+          reconnecting={reconnecting}
+        />
+      )}
       <header
         className={`window-toolbar ${window.jeval.platform === 'darwin' ? 'mac-toolbar' : ''}`}
         aria-label="窗口导航"
@@ -211,14 +303,18 @@ export function App() {
               <span className="preview-label">{source === 'demo' ? '演示空间' : 'Codex 记录'}</span>
             </div>
             <div className="topbar-actions">
-              <span className="local-pill">
-                <Icon name="monitor" />
-                本地
-              </span>
+              <button
+                className="button"
+                onClick={scanCodex}
+                disabled={!hello || importing || choosingDirectory || scanning || reconnecting}
+              >
+                <Icon name="search" />
+                {choosingDirectory ? '正在选择…' : '发现本地任务'}
+              </button>
               <button
                 className="button"
                 onClick={importCodex}
-                disabled={!hello || importing || reconnecting}
+                disabled={!hello || importing || choosingDirectory || scanning || reconnecting}
               >
                 <Icon name="folder" />
                 {importing ? '正在导入…' : '导入 Codex 记录'}
@@ -237,10 +333,70 @@ export function App() {
             <Icon name="info" />
             <span>
               {source === 'demo'
-                ? '当前为合成演示。可选择 Codex JSONL 文件，查看本地执行记录。'
-                : '仅在本地读取所选文件。本次导入保留到应用或引擎退出；文件更新后需重新导入。'}
+                ? '当前为合成演示。可选择 Codex 文件或目录，查看本地执行记录。'
+                : '仅在本地读取所选文件或目录，记录保留到引擎退出；再次扫描或导入可更新快照。'}
             </span>
           </div>
+          {scan && (
+            <section className="scan-panel" aria-label="Codex 目录扫描">
+              <div className="scan-summary">
+                <strong role="status">{scan.message}</strong>
+                {scanning ? (
+                  <button
+                    className="text-button"
+                    onClick={cancelScan}
+                    disabled={scan.state === 'cancelling'}
+                  >
+                    {scan.state === 'cancelling'
+                      ? '正在取消…'
+                      : scan.phase === 'import'
+                        ? '取消导入'
+                        : '取消扫描'}
+                  </button>
+                ) : (
+                  <div>
+                    <button className="text-button" onClick={() => setPickerOpen(true)}>
+                      浏览扫描结果
+                    </button>
+                    <button className="text-button" onClick={() => setScan(undefined)}>
+                      关闭扫描结果
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="scan-root" title={scan.root}>
+                {scan.root}
+              </p>
+              <p>
+                已检查 {scan.visited} 项 · 可选 {scan.ready} 条 · 新增 {scan.imported} · 更新{' '}
+                {scan.updated} · 失败 {scan.failed} · 跳过链接/特殊文件 {scan.skipped}
+              </p>
+              {scanError && (
+                <div role="alert">
+                  无法更新扫描状态：{scanError}
+                  <button className="text-button" onClick={reconnect} disabled={reconnecting}>
+                    重新连接引擎
+                  </button>
+                </div>
+              )}
+              {scan.issues.length > 0 && (
+                <details>
+                  <summary>
+                    查看失败项（显示 {scan.issues.length} / {scan.failed}）
+                  </summary>
+                  <ul>
+                    {scan.issues.map((issue, index) => (
+                      <li key={index}>
+                        <span>{issue.path}</span>
+                        <br />
+                        {issue.message}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </section>
+          )}
           {notice && (
             <div className="import-notice" role="status">
               <span>{notice}</span>
@@ -379,42 +535,69 @@ function RunDetail({ run }: { run: Run }) {
   const [loading, setLoading] = useState(true)
   const [evidence, setEvidence] = useState<RunEvent>()
   const [attempt, setAttempt] = useState(0)
+  const [eventSearch, setEventSearch] = useState('')
+  const [eventKind, setEventKind] = useState<RunEvent['kind'] | 'all'>('all')
+  const [total, setTotal] = useState(0)
+  const queryKey = `${run.id}:${eventSearch}:${eventKind}`
+  const currentQuery = useRef(queryKey)
+  const queryVersion = useRef(0)
+  currentQuery.current = queryKey
+  const filtered = eventSearch.trim() !== '' || eventKind !== 'all'
 
   useEffect(() => {
     let active = true
+    queryVersion.current++
     setLoading(true)
-    window.jeval
-      .listEvents({ runId: run.id, limit: 50 })
-      .then((page) => {
-        if (active) {
-          setEvents(page.items)
-          setNextOffset(page.nextOffset)
-          setError('')
-        }
-      })
-      .catch((e) => {
-        if (active) setError(errorMessage(e))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+    setEvents([])
+    setNextOffset(null)
+    setEvidence(undefined)
+    setError('')
+    const timer = setTimeout(() => {
+      void window.jeval
+        .listEvents({ runId: run.id, search: eventSearch, kind: eventKind, limit: 50 })
+        .then((page) => {
+          if (active) {
+            setEvents(page.items)
+            setNextOffset(page.nextOffset)
+            setTotal(page.total)
+            setError('')
+          }
+        })
+        .catch((e) => {
+          if (active) setError(errorMessage(e))
+        })
+        .finally(() => {
+          if (active) setLoading(false)
+        })
+    }, 150)
     return () => {
       active = false
+      queryVersion.current++
+      clearTimeout(timer)
     }
-  }, [run.id, attempt])
+  }, [run.id, eventSearch, eventKind, attempt])
 
   async function loadMore() {
     if (nextOffset === null || loading) return
+    const version = queryVersion.current
     setLoading(true)
     try {
-      const page = await window.jeval.listEvents({ runId: run.id, offset: nextOffset, limit: 50 })
+      const page = await window.jeval.listEvents({
+        runId: run.id,
+        search: eventSearch,
+        kind: eventKind,
+        offset: nextOffset,
+        limit: 50
+      })
+      if (currentQuery.current !== queryKey || queryVersion.current !== version) return
       setEvents((old) => [...old, ...page.items])
       setNextOffset(page.nextOffset)
       setError('')
     } catch (e) {
-      setError(errorMessage(e))
+      if (currentQuery.current === queryKey && queryVersion.current === version)
+        setError(errorMessage(e))
     } finally {
-      setLoading(false)
+      if (currentQuery.current === queryKey && queryVersion.current === version) setLoading(false)
     }
   }
 
@@ -507,6 +690,41 @@ function RunDetail({ run }: { run: Run }) {
           </h3>
           <span>保留来源顺序</span>
         </div>
+        <div className="event-filters">
+          <input
+            aria-label="搜索记录内容"
+            placeholder="搜索消息、工具或输出"
+            value={eventSearch}
+            maxLength={200}
+            onChange={(event) => {
+              setEventSearch(event.target.value)
+              setLoading(true)
+              setNextOffset(null)
+            }}
+          />
+          <select
+            aria-label="筛选事件类型"
+            value={eventKind}
+            onChange={(event) => {
+              setEventKind(event.target.value as RunEvent['kind'] | 'all')
+              setLoading(true)
+              setNextOffset(null)
+            }}
+          >
+            <option value="all">全部事件</option>
+            {Object.entries(kindLabels).map(([kind, label]) => (
+              <option key={kind} value={kind}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="event-search-hint">搜索范围为当前快照中的正文预览；截断部分需查看源文件。</p>
+        {filtered && !loading && !error && (
+          <p className="event-match-count" role="status">
+            匹配 {total} 个事件 · 保留原始序号
+          </p>
+        )}
         {error && (
           <div className="detail-error" role="alert">
             {error}
@@ -519,6 +737,22 @@ function RunDetail({ run }: { run: Run }) {
           </div>
         )}
         <div className="timeline" aria-busy={loading}>
+          {!loading && !error && events.length === 0 && (
+            <div className="event-search-empty">
+              <p>{filtered ? '没有匹配的事件' : '这条记录没有可展示的事件'}</p>
+              {filtered && (
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    setEventSearch('')
+                    setEventKind('all')
+                  }}
+                >
+                  清除事件筛选
+                </button>
+              )}
+            </div>
+          )}
           {events.map((event) => (
             <div className={`event ${event.kind}`} key={event.id}>
               <span className="event-marker">
@@ -608,7 +842,9 @@ function RunDetail({ run }: { run: Run }) {
           )}
           {!loading && nextOffset === null && !error && (
             <div className="timeline-end">
-              记录结束{run.status === 'unknown' ? ' · 完成状态未提供' : ''}
+              {filtered
+                ? '筛选结果结束'
+                : `记录结束${run.status === 'unknown' ? ' · 完成状态未提供' : ''}`}
             </div>
           )}
         </div>

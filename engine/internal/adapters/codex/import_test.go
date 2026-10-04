@@ -2,7 +2,9 @@ package codex
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,17 @@ func input(t *testing.T, data []byte) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func TestReadCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, _, err := ReadContext(ctx, input(t, []byte(meta))); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled read: %v", err)
+	}
+	if _, _, err := messageKeys(ctx, [][]byte{[]byte(meta)}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled first parsing pass: %v", err)
+	}
 }
 
 func TestClassicMappingAndReadOnly(t *testing.T) {

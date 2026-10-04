@@ -4,6 +4,7 @@ package codex
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -97,11 +98,14 @@ func messageTitle(content string) string {
 // Paginated history can project the same message through item_completed. Match
 // text within its turn, never globally: identical prompts in different turns
 // are distinct messages. Scan first so either physical ordering is supported.
-func messageKeys(lines [][]byte) (map[string]bool, []string) {
+func messageKeys(ctx context.Context, lines [][]byte) (map[string]bool, []string, error) {
 	keys := map[string]bool{}
 	turns := make([]string, len(lines))
 	turn := ""
 	for i, raw := range lines {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
 		var row rolloutLine
 		var p payload
 		if json.Unmarshal(raw, &row) != nil || json.Unmarshal(row.Payload, &p) != nil {
@@ -121,7 +125,7 @@ func messageKeys(lines [][]byte) (map[string]bool, []string) {
 			keys[messageKey(turn, p.Role, textContent(p.Content))] = true
 		}
 	}
-	return keys, turns
+	return keys, turns, nil
 }
 
 func messageKey(turn, role, content string) string {
@@ -131,7 +135,15 @@ func messageKey(turn, role, content string) string {
 // Read makes a bounded in-memory snapshot. Re-importing a path replaces that path's
 // record; copies at different paths remain distinct, even if session IDs match.
 func Read(path string) (model.Run, []model.Event, error) {
+	return ReadContext(context.Background(), path)
+}
+
+// ReadContext checks cancellation while reading and in both parsing passes.
+func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, error) {
 	var run model.Run
+	if err := ctx.Err(); err != nil {
+		return run, nil, err
+	}
 	if !filepath.IsAbs(path) || len(path) > 2048 || !strings.EqualFold(filepath.Ext(path), ".jsonl") {
 		return run, nil, fmt.Errorf("请选择绝对路径下的 .jsonl 文件")
 	}
@@ -154,7 +166,7 @@ func Read(path string) (model.Run, []model.Event, error) {
 	if stat.Size() > MaxFileBytes {
 		return run, nil, fmt.Errorf("文件超过 16 MiB 导入上限")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
+	data, err := io.ReadAll(io.LimitReader(contextReader{ctx, f}, MaxFileBytes+1))
 	if err != nil {
 		return run, nil, fmt.Errorf("读取文件失败：%w", err)
 	}
@@ -195,8 +207,14 @@ func Read(path string) (model.Run, []model.Event, error) {
 		return model.Run{}, nil, fmt.Errorf("文件超过 50000 行导入上限")
 	}
 	lines := bytes.Split(bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf}), []byte{'\n'})
-	canonical, turns := messageKeys(lines)
+	canonical, turns, err := messageKeys(ctx, lines)
+	if err != nil {
+		return model.Run{}, nil, err
+	}
 	for index, raw := range lines {
+		if err := ctx.Err(); err != nil {
+			return model.Run{}, nil, err
+		}
 		line := index + 1
 		if len(bytes.TrimSpace(raw)) == 0 {
 			continue
@@ -346,4 +364,16 @@ func Read(path string) (model.Run, []model.Event, error) {
 	}
 	run.EventCount = len(events)
 	return run, events, nil
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
 }

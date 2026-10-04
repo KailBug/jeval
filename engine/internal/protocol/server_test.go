@@ -95,3 +95,29 @@ func TestEvidenceAndEventPagination(t *testing.T) {
 		ids[e.ID] = true
 	}
 }
+
+func TestEventSearchFiltersBeforePaginationAndKeepsEvidence(t *testing.T) {
+	r := sample(t)
+	page := dispatch(request("runs.events", `{"runId":"demo-cache","search":"  PROMISE  ","limit":1}`), r).Result.(Page[model.Event])
+	if page.Total != 2 || len(page.Items) != 1 || page.Items[0].Sequence != 4 || page.NextOffset == nil || *page.NextOffset != 1 {
+		t.Fatal(page)
+	}
+	if page.Items[0].Evidence.Line != 4 || *page.Items[0].ParentID != "cache-3" {
+		t.Fatal("filtered event lost references")
+	}
+	page = dispatch(request("runs.events", `{"runId":"demo-cache","search":"promise","limit":1,"offset":1}`), r).Result.(Page[model.Event])
+	if page.Total != 2 || page.Items[0].Sequence != 5 || page.NextOffset != nil {
+		t.Fatal(page)
+	}
+	page = dispatch(request("runs.events", `{"runId":"demo-cache","search":"promise","kind":"verification"}`), r).Result.(Page[model.Event])
+	if page.Total != 1 || page.Items[0].Sequence != 5 {
+		t.Fatal(page)
+	}
+	page = dispatch(request("runs.events", `{"runId":"demo-cache","kind":"error"}`), r).Result.(Page[model.Event])
+	if page.Total != 0 || page.Items == nil {
+		t.Fatal(page)
+	}
+	if res := dispatch(request("runs.events", `{"runId":"demo-cache","kind":"other"}`), r); res.Error == nil || res.Error.Code != "INVALID_PARAMS" {
+		t.Fatal(res)
+	}
+}
