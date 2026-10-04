@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 64 64" fill="none">
+  <title>jeval</title>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="#262725"/>
+  <circle cx="42" cy="16" r="5" fill="#FFFFFF"/>
+  <path d="M42 30V39C42 48 36 52 29 52C24 52 21 49 17 45L14 42" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
