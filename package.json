@@ -16,6 +16,7 @@
     "typecheck": "npm run typecheck --workspace @jeval/desktop",
     "test:engine": "node scripts/dev/test-engine.mjs",
     "test:desktop": "tsx --test tests/integration/*.test.ts",
+    "test:storage": "tsx --test tests/integration/storage-probe.test.ts",
     "test": "npm run test:engine && npm run build:engine && npm run test:desktop",
     "check": "npm run typecheck && npm test && npm run build",
     "pack": "npm run build && npm run pack --workspace @jeval/desktop",

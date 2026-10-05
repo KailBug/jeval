@@ -132,6 +132,9 @@ func messageKey(turn, role, content string) string {
 	return fmt.Sprintf("text:%s:%s:%x", turn, role, sha256.Sum256([]byte(content)))
 }
 
+// AdapterVersion changes whenever normalization or preview semantics change.
+const AdapterVersion = "codex-rollout-v1"
+
 // Read makes a bounded in-memory snapshot. Re-importing a path replaces that path's
 // record; copies at different paths remain distinct, even if session IDs match.
 func Read(path string) (model.Run, []model.Event, error) {
@@ -363,6 +366,11 @@ func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, er
 		warn(1, "此文件没有可展示的消息或工具事件")
 	}
 	run.EventCount = len(events)
+	info.AdapterVersion = AdapterVersion
+	info.SnapshotID = model.SnapshotID(run.ID, info.SHA256, AdapterVersion)
+	for i := range events {
+		events[i].Evidence.SnapshotID = info.SnapshotID
+	}
 	return run, events, nil
 }
 

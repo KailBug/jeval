@@ -20,6 +20,8 @@ type ImportWarning struct {
 }
 
 type ImportInfo struct {
+	AdapterVersion string          `json:"adapterVersion"`
+	SnapshotID     string          `json:"snapshotId"`
 	File           string          `json:"file"`
 	SHA256         string          `json:"sha256"`
 	SessionID      string          `json:"sessionId"`
@@ -32,9 +34,10 @@ type ImportInfo struct {
 }
 
 type EvidenceRef struct {
-	SourceID string `json:"sourceId"`
-	Location string `json:"location"`
-	Line     int    `json:"line"`
+	SnapshotID string `json:"snapshotId,omitempty"`
+	SourceID   string `json:"sourceId"`
+	Location   string `json:"location"`
+	Line       int    `json:"line"`
 }
 
 type Event struct {

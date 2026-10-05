@@ -1,10 +1,10 @@
 # 开发运行指南
 
-更新日期：2026-10-04。命令均从仓库根目录执行，示例使用 Windows PowerShell。
+更新日期：2026-10-05。命令均从仓库根目录执行，示例使用 Windows PowerShell。
 
 ## 环境与首次运行
 
-需要 Node.js 22.12+、npm 和 Go 1.24+。当前已验证环境为 Windows x64、Node.js 24.19.0、Go 1.27.0；这不是所有最低版本均已测试的声明。
+需要 Node.js 22.12+、npm 和 Go 1.26+（SQLite 驱动依赖要求）。当前已验证环境为 Windows x64、Node.js 24.19.0、Go 1.27.0；这不是所有最低版本均已测试的声明。
 
 ```powershell
 Set-Location D:\jeval
@@ -34,17 +34,18 @@ npm run dev
 
 ## 构建与检查
 
-| 命令 | 内容及前置条件 |
-| --- | --- |
-| `npm run typecheck` | 检查桌面源码与共享 TypeScript 类型 |
-| `npm run build:icons` | 从品牌 SVG 生成窗口 PNG 和 Windows 多尺寸 ICO；dev/build 自动包含此步骤 |
-| `npm run test:engine` | 运行 Go 测试 |
-| `npm test` | Go 测试、构建 Go 引擎、运行 Node → Go 集成测试 |
-| `npm run build` | 生成图标，编译 Go 和 Electron 三个进程层的产物 |
-| `npm run check` | 类型检查、Go/集成测试和生产构建；不包含 E2E |
-| `npm run test:e2e` | 启动真实 Electron 测试；需先执行 `npm run build` |
-| `npm run pack` | 先构建，再生成 Windows 本机的目录包 |
-| `npm run dist:win` | 构建 NSIS 开发安装包的入口；尚未执行安装验收 |
+| 命令                   | 内容及前置条件                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `npm run typecheck`    | 检查桌面源码与共享 TypeScript 类型                                                      |
+| `npm run build:icons`  | 从品牌 SVG 生成窗口 PNG 和 Windows 多尺寸 ICO；dev/build 自动包含此步骤                 |
+| `npm run test:engine`  | 运行 Go 测试                                                                            |
+| `npm run test:storage` | 检查已构建引擎的合成 SQLite 写入、迁移、关闭重开和清理；test/check 的集成测试也包含此项 |
+| `npm test`             | Go 测试、构建 Go 引擎、运行 Node → Go 集成测试                                          |
+| `npm run build`        | 生成图标，编译 Go 和 Electron 三个进程层的产物                                          |
+| `npm run check`        | 类型检查、Go/集成测试和生产构建；不包含 E2E                                             |
+| `npm run test:e2e`     | 启动真实 Electron 测试；需先执行 `npm run build`                                        |
+| `npm run pack`         | 先构建，再生成 Windows 本机的目录包                                                     |
+| `npm run dist:win`     | 构建 NSIS 开发安装包的入口；尚未执行安装验收                                            |
 
 检查前关闭正在运行的 jeval，避免 Windows 占用待覆盖的引擎或目录包文件。`test:desktop` 单独执行时也要求已有 `bin/jeval-engine.exe`，通常直接运行 `npm test`。
 
@@ -63,6 +64,23 @@ try {
 E2E 临时用户数据在 `.local/e2e-*`；截图和失败 trace 在 `test-results`。以上目录不纳入 Git。检查范围和已有结果见 [M0 进度](m0-progress.md)，安装验收见 [预览验收](../releases/m0-preview.md)。
 
 ## 运行已生成的程序
+
+### 独立存储检查
+
+SQLite 基础验证暂未接入桌面任务库。引擎的存储检查只写入自己新建的临时目录，使用合成数据，不读取私人来源。开发构建后可执行 `npm run test:storage`；目录包复核命令为：
+
+```powershell
+$env:JEVAL_STORAGE_EXECUTABLE = 'release/win-unpacked/resources/engine/jeval-engine.exe'
+try {
+  npm run test:storage
+} finally {
+  Remove-Item Env:JEVAL_STORAGE_EXECUTABLE -ErrorAction SilentlyContinue
+}
+```
+
+也可直接运行 `& .\bin\jeval-engine.exe --storage-check $env:TEMP`，目录参数必须为已存在的绝对路径。成功返回 storageCheck=ok 的 JSON，失败返回非零退出码。测试清空子进程 PATH，只验证不调用外部工具，不代替干净 Windows 安装验收。实现和限制见 [存储验证](../architecture/storage-validation.md)。构建会收集 Go 依赖许可文本并随引擎分发 `THIRD-PARTY-NOTICES.txt`。
+
+### 桌面入口
 
 在 Windows 文件资源管理器中打开 `D:\jeval\release\win-unpacked`，双击 `jeval.exe`。也可以在终端执行：
 

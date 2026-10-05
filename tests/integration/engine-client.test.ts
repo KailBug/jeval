@@ -118,11 +118,14 @@ test('Codex imports replace snapshots atomically, preserve evidence, and page la
     assert.equal(first.replaced, false)
     assert.equal(first.run.eventCount, 5)
     assert.equal(first.run.importInfo?.warningCount, 2)
+    assert.equal(first.run.importInfo?.adapterVersion, 'codex-rollout-v1')
+    assert.match(first.run.importInfo?.snapshotId ?? '', /^snapshot-[a-f0-9]{64}$/)
     assert.equal((await client.request<Page<Run>>('runs.list', { source: 'codex' })).total, 1)
     assert.equal((await client.request<Page<Run>>('runs.list', { source: 'demo' })).total, 3)
     const again = await client.request<ImportResult>('codex.import', { path })
     assert.equal(again.replaced, true)
     assert.equal(again.run.id, first.run.id)
+    assert.equal(again.run.importInfo?.snapshotId, first.run.importInfo?.snapshotId)
     assert.deepEqual(await readFile(path), original)
     await writeFile(path, 'not codex')
     await assert.rejects(client.request('codex.import', { path }), /IMPORT_FAILED/)
@@ -141,6 +144,7 @@ test('Codex imports replace snapshots atomically, preserve evidence, and page la
     const updated = await client.request<ImportResult>('codex.import', { path })
     assert.equal(updated.run.eventCount, 120)
     assert.notEqual(updated.run.importInfo?.sha256, first.run.importInfo?.sha256)
+    assert.notEqual(updated.run.importInfo?.snapshotId, first.run.importInfo?.snapshotId)
     let offset: number | null = 0
     const ids = new Set<string>()
     let pages = 0
@@ -150,7 +154,10 @@ test('Codex imports replace snapshots atomically, preserve evidence, and page la
         offset,
         limit: 100
       })
-      page.items.forEach((event) => ids.add(event.id))
+      page.items.forEach((event) => {
+        ids.add(event.id)
+        assert.equal(event.evidence.snapshotId, updated.run.importInfo?.snapshotId)
+      })
       assert.ok(page.items.length > 0)
       offset = page.nextOffset
       pages++

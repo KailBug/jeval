@@ -1,6 +1,6 @@
 # M0 架构与决策
 
-更新日期：2026-10-05。本文首先描述当前代码；末节单列尚未实现的演进约束。长期目标见 [开发规划](../jeval-development-plan.md)，本次仅核对文档。
+更新日期：2026-10-05。本文首先描述当前代码；末节单列尚未实现的演进约束。长期目标见 [开发规划](../jeval-development-plan.md)，本轮增加独立 SQLite 验证包和快照身份。
 
 ## 实际调用链路
 
@@ -19,7 +19,7 @@ React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC
 | Codex 适配器 | 有界只读快照、消息/工具映射、物理行号与摘要、解析提示             | [import.go](../../engine/internal/adapters/codex/import.go)                                                                            |
 | 数据与类型   | Run/Event 草案和三条合成记录                                      | [Go 模型](../../engine/internal/model/record.go)、[TS 类型](../../contracts/index.ts)、[样例](../../engine/internal/demo/records.json) |
 
-`engine/internal/storage`、`discovery`、`ingest`、`sync`、`analysis` 等目录仍为规划占位，不应从目录存在推断功能已经实现。
+`engine/internal/storage` 已实现独立的 SQLite 验证包，包含不可变快照、当前指针、事务迁移及恢复用例，尚未接入上述桌面调用链路。其设计、驱动依据与限制见 [存储验证](storage-validation.md)。`discovery`、`ingest`、`sync`、`analysis` 等独立模块仍待实现。
 
 ## 已采用的选择
 
@@ -33,7 +33,7 @@ React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC
 | 首个真实来源 Codex                | 支持 classic/paginated 子集；一份 0.160.0 记录已在本地验证，完整版本兼容矩阵尚未验收                         |
 | Windows x64 本机验证              | 目录包已运行；不据此声明安装验收或跨平台支持完成                                                             |
 
-SQLite 驱动和许可证仍待确定。当前来源身份使用规范化路径，内存快照带原始字节摘要；这是开发草案，不承诺外部导出兼容性。
+SQLite 验证包使用 modernc.org/sqlite v1.60.1，无 cgo；许可证仍待作者确定。当前来源身份使用规范化路径，内存快照带原始字节摘要、适配器版本与快照 ID；事件证据绑定具体版本。字段以记录契约为准，仍不承诺外部导出兼容性。
 
 ## 生命周期与边界
 
@@ -57,7 +57,7 @@ SQLite 驱动和许可证仍待确定。当前来源身份使用规范化路径�
 
 ## 下一阶段演进约束（规划，未实现）
 
-按主规划 A–D 顺序，先验证驱动与身份语义，再把内存快照迁移为可恢复存储，之后实现交换格式和检查点。SQLite 仍是拟采用方向，具体驱动需以 Windows 构建、事务、迁移、打包和恢复验证决定；本次没有增加依赖或冻结字段。
+按主规划 A–D 顺序，A 已增加驱动验证与身份语义；B 再把内存快照迁移为可恢复任务库，之后实现交换格式和检查点。当前存储原型用单记录 JSON 验证正确性，尚不能替代有界查询和完整正文设计。
 
 - Electron 主进程提供受控的应用数据目录，Go 负责数据库与快照写入、版本迁移和恢复。数据库文件不放在安装目录，渲染层继续不接收任意文件系统权限。
 - 区分来源身份、快照版本和事件引用。当前路径哈希加物理行号不足以独立定位历史内容；同路径替换不得让旧标注或分析悄悄指向新事件。正式字段同步修改 `contracts/` 与两端类型。
