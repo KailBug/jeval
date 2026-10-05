@@ -89,6 +89,13 @@ func (s *scanService) dispatch(req Request) Response {
 	}
 	res := Response{Type: "response", Version: Version, ID: req.ID}
 	switch req.Method {
+	case "records.export":
+		return s.exportRecord(req)
+	case "records.import":
+		if s.active() {
+			return failure(req.ID, "SCAN_BUSY", "请等待当前扫描完成或取消扫描")
+		}
+		return s.importRecord(req)
 	case "hello":
 		res.Result = hello(s.store != nil)
 		return res

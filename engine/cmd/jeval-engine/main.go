@@ -20,7 +20,7 @@ func main() {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			fmt.Fprintln(os.Stdout, `{"storageCheck":"ok","schemaVersion":2,"scope":"synthetic-preview-only"}`)
+			fmt.Fprintf(os.Stdout, `{"storageCheck":"ok","schemaVersion":%d,"scope":"synthetic-preview-only"}`+"\n", storage.SchemaVersion)
 			return
 		}
 	}

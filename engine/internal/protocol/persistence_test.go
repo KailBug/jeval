@@ -51,6 +51,21 @@ func (f *faultyLibrary) Events(ctx context.Context, sourceID, search, kind strin
 	return f.libraryStore.Events(ctx, sourceID, search, kind, offset, limit)
 }
 
+func (f *faultyLibrary) Current(ctx context.Context, id string) (model.Record, error) {
+	return f.libraryStore.(exchangeStore).Current(ctx, id)
+}
+
+func (f *faultyLibrary) SaveExchange(ctx context.Context, run model.Run, events []model.Event) error {
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	return f.libraryStore.(exchangeStore).SaveExchange(ctx, run, events)
+}
+
+func (f *faultyLibrary) CheckExportPath(ctx context.Context, path string) error {
+	return f.libraryStore.(exchangeStore).CheckExportPath(ctx, path)
+}
+
 func openLibrary(t *testing.T, path string) *storage.Store {
 	t.Helper()
 	s, err := storage.Open(context.Background(), path)

@@ -110,7 +110,7 @@ func decodeRun(data []byte) (model.Run, error) {
 // Runs restores only current metadata, never record_json or event rows. The
 // existing import cap bounds this small metadata set; event queries stay in SQL.
 func (s *Store) Runs(ctx context.Context) ([]model.Run, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT sources.id,sources.current_snapshot_id,snapshot_runs.event_count,snapshot_runs.run_json FROM sources LEFT JOIN snapshot_runs ON sources.id=snapshot_runs.source_id AND sources.current_snapshot_id=snapshot_runs.snapshot_id ORDER BY sources.rowid LIMIT ?`, maxCurrentSources+1)
+	rows, err := s.db.QueryContext(ctx, `SELECT sources.id,sources.current_snapshot_id,sources.update_allowed,snapshot_runs.event_count,snapshot_runs.run_json FROM sources LEFT JOIN snapshot_runs ON sources.id=snapshot_runs.source_id AND sources.current_snapshot_id=snapshot_runs.snapshot_id ORDER BY sources.rowid LIMIT ?`, maxCurrentSources+1)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +120,8 @@ func (s *Store) Runs(ctx context.Context) ([]model.Run, error) {
 	for rows.Next() {
 		var data []byte
 		var sourceID, snapshotID string
-		var eventCount int
-		if err = rows.Scan(&sourceID, &snapshotID, &eventCount, &data); err != nil {
+		var eventCount, updateAllowed int
+		if err = rows.Scan(&sourceID, &snapshotID, &updateAllowed, &eventCount, &data); err != nil {
 			return nil, err
 		}
 		run, decodeErr := decodeRun(data)
@@ -131,6 +131,10 @@ func (s *Store) Runs(ctx context.Context) ([]model.Run, error) {
 		if run.ID != sourceID || run.ImportInfo.SnapshotID != snapshotID || run.EventCount != eventCount {
 			return nil, errors.New("saved run index key mismatch")
 		}
+		if updateAllowed != 0 && updateAllowed != 1 {
+			return nil, errors.New("invalid saved source update permission")
+		}
+		run.ReadOnly = updateAllowed == 0
 		runs = append(runs, run)
 		events += run.EventCount
 		if len(runs) > maxCurrentSources || events > maxCurrentEvents {

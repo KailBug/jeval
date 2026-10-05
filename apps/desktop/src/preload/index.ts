@@ -4,6 +4,8 @@ import type { DesktopAPI } from '../../../../contracts/index'
 const api: DesktopAPI = {
   platform: process.platform,
   importCodex: () => ipcRenderer.invoke('jeval:import-codex'),
+  importRecord: () => ipcRenderer.invoke('jeval:import-record'),
+  exportRecord: (runId, format) => ipcRenderer.invoke('jeval:export-record', { runId, format }),
   updateCodex: (runId) => ipcRenderer.invoke('jeval:update-codex', runId),
   scanCodex: (directoryId) => ipcRenderer.invoke('jeval:scan-codex', directoryId),
   listCodexDirectories: () => ipcRenderer.invoke('jeval:codex-directories'),

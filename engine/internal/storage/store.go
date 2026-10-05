@@ -16,7 +16,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 2
+const SchemaVersion = 3
+const schemaVersion = SchemaVersion
 
 const (
 	maxCurrentSources = 20
@@ -57,9 +58,16 @@ CREATE INDEX snapshot_events_kind ON snapshot_events(snapshot_id, kind, sequence
 CREATE TABLE directories (
   id TEXT PRIMARY KEY,
   path TEXT NOT NULL UNIQUE
-);`}
+);`, `ALTER TABLE sources ADD COLUMN update_allowed INTEGER NOT NULL DEFAULT 1 CHECK(update_allowed IN (0,1));`}
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db   *sql.DB
+	path string
+}
+
+// ErrExchangeConflict prevents an imported bundle from moving an already
+// registered source back to a different (possibly older) current snapshot.
+var ErrExchangeConflict = errors.New("record source already has a different current snapshot")
 
 // Open requires a normal absolute filename; it neither creates parent directories
 // nor accepts SQLite URI options from callers. The pool is limited to one
@@ -74,7 +82,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, path: filepath.Clean(path)}
 	if err = s.migrate(ctx, migrations); err == nil {
 		var mode string
 		err = db.QueryRowContext(ctx, "PRAGMA journal_mode=WAL").Scan(&mode)
@@ -125,6 +133,19 @@ func (s *Store) migrate(ctx context.Context, steps []string) error {
 // Save publishes one immutable, preview-only normalized snapshot. Retaining
 // previous versions ensures old evidence never silently points at new content.
 func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) error {
+	return s.save(ctx, run, events, false)
+}
+
+// SaveExchange records a detached snapshot. Its embedded source location is
+// evidence, never authorization to read that location on this computer.
+// An identical current snapshot preserves the existing update permission.
+func (s *Store) SaveExchange(ctx context.Context, run model.Run, events []model.Event) error {
+	return s.save(ctx, run, events, true)
+}
+
+func (s *Store) save(ctx context.Context, run model.Run, events []model.Event, detached bool) error {
+	// Update permission is local source configuration, not immutable data.
+	run.ReadOnly = false
 	if err := validate(run, events); err != nil {
 		return err
 	}
@@ -138,6 +159,16 @@ func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) e
 	}
 	defer tx.Rollback()
 	info := run.ImportInfo
+	if detached {
+		var current string
+		if err := tx.QueryRowContext(ctx, "SELECT current_snapshot_id FROM sources WHERE id=?", run.ID).Scan(&current); err == nil {
+			if current != info.SnapshotID {
+				return ErrExchangeConflict
+			}
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+	}
 	if err = checkCapacity(ctx, tx, run.ID, run.EventCount); err != nil {
 		return err
 	}
@@ -162,7 +193,11 @@ func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) e
 			return err
 		}
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO sources(id,current_snapshot_id) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET current_snapshot_id=excluded.current_snapshot_id`, run.ID, info.SnapshotID); err != nil {
+	query := `INSERT INTO sources(id,current_snapshot_id,update_allowed) VALUES(?,?,1) ON CONFLICT(id) DO UPDATE SET current_snapshot_id=excluded.current_snapshot_id,update_allowed=1`
+	if detached {
+		query = `INSERT INTO sources(id,current_snapshot_id,update_allowed) VALUES(?,?,0) ON CONFLICT(id) DO UPDATE SET current_snapshot_id=excluded.current_snapshot_id`
+	}
+	if _, err = tx.ExecContext(ctx, query, run.ID, info.SnapshotID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -216,6 +251,9 @@ func validate(run model.Run, events []model.Event) error {
 }
 
 func validateRun(run model.Run) error {
+	if run.ReadOnly {
+		return errors.New("local update permission must not be stored in a snapshot")
+	}
 	i := run.ImportInfo
 	if run.Demo || run.Source != "Codex" || run.ID == "" || i == nil || i.AdapterVersion == "" || i.File == "" {
 		return errors.New("storage requires a normalized Codex snapshot")

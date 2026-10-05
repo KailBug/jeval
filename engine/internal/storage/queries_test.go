@@ -70,7 +70,7 @@ func TestV1BackfillPreservesHistoryAndQueriesCurrent(t *testing.T) {
 	}
 	s := openTest(t, path)
 	var version, indexed int
-	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 2 {
+	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != schemaVersion {
 		t.Fatal("migration version", version, err)
 	}
 	if err := s.db.QueryRow("SELECT count(*) FROM snapshot_events").Scan(&indexed); err != nil || indexed != 6 {

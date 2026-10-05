@@ -168,7 +168,65 @@ function registerIPC(): void {
         await ensureScanIdle()
         const run = await engine.request<Run>('runs.get', { runId: id })
         if (run.demo || !run.importInfo) throw new Error('只能更新已登记的 Codex 记录')
+        if (run.readOnly)
+          throw new Error('只读交换快照不能更新本地来源；请显式重新导入原始 Codex 文件')
         return await engine.request('codex.update', { runId: id }, 30000)
+      } finally {
+        importing = false
+      }
+    },
+    'jeval:import-record': async () => {
+      if (!window || importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        await ensureScanIdle()
+        const selection = await dialog.showOpenDialog(window, {
+          title: '导入 jeval 记录',
+          properties: ['openFile'],
+          filters: [{ name: 'jeval 记录', extensions: ['json'] }]
+        })
+        if (selection.canceled || !selection.filePaths[0]) return null
+        return await engine.request('records.import', { path: selection.filePaths[0] }, 30000)
+      } finally {
+        importing = false
+      }
+    },
+    'jeval:export-record': async (params) => {
+      const selection = params as { runId?: unknown; format?: unknown } | null
+      if (!selection || (selection.format !== 'json' && selection.format !== 'markdown'))
+        throw new Error('无效的导出格式')
+      const id = requireID(selection.runId)
+      if (!window || importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        await ensureScanIdle()
+        const run = await engine.request<Run>('runs.get', { runId: id })
+        if (run.demo || run.source !== 'Codex' || !run.importInfo)
+          throw new Error('请选择已保存的 Codex 快照导出')
+        const filename =
+          run.title
+            .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
+            .slice(0, 80)
+            .replace(/[. ]+$/, '') || id
+        const format = selection.format
+        const destination = await dialog.showSaveDialog(window, {
+          title: format === 'json' ? '导出 jeval JSON 记录' : '导出 Markdown 报告',
+          defaultPath: `${filename}${format === 'json' ? '.jeval.json' : '.md'}`,
+          filters: [
+            {
+              name: format === 'json' ? 'jeval 记录' : 'Markdown 报告',
+              extensions: [format === 'json' ? 'json' : 'md']
+            }
+          ]
+        })
+        if (destination.canceled || !destination.filePath) return null
+        return await engine.request(
+          'records.export',
+          { runId: id, path: destination.filePath, format },
+          30000
+        )
       } finally {
         importing = false
       }
