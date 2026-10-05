@@ -1,37 +1,37 @@
 # M0 架构与决策
 
-更新日期：2026-10-04。本文描述当前代码，长期目标见 [开发规划](../jeval-development-plan.md)。
+更新日期：2026-10-05。本文首先描述当前代码；末节单列尚未实现的演进约束。长期目标见 [开发规划](../jeval-development-plan.md)，本次仅核对文档。
 
 ## 实际调用链路
 
 React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC 交给主进程；主进程校验调用来源，通过 EngineClient 向 Go 子进程发送 JSON Lines 请求。Go 查询内嵌演示和显式导入的 Codex 内存快照，将分页响应写回 stdout。该链路没有 HTTP 服务，也没有数据库。
 
-| 模块 | 当前职责 | 代码入口 |
-| --- | --- | --- |
-| 渲染层 | 任务搜索、记录内搜索/类型筛选、时间线、输出与证据面板 | [App.tsx](../../apps/desktop/src/renderer/app/App.tsx) |
-| 候选选择窗口 | 原生 dialog 模态焦点、候选分页读取、搜索/概要、默认不选、批量确认 | [ScanPicker.tsx](../../apps/desktop/src/renderer/app/ScanPicker.tsx) |
-| preload | 暴露握手、查询、重启、无参数的文件/目录选择，以及扫描状态与取消 | [preload/index.ts](../../apps/desktop/src/preload/index.ts) |
-| 主进程 | 窗口、系统文件选择、IPC 来源检查、引擎路径、启动与退出 | [main/index.ts](../../apps/desktop/src/main/index.ts) |
-| EngineClient | 握手、请求 ID、分包响应、超时、进程失败与停止 | [engine-client.ts](../../apps/desktop/src/main/engine-client.ts) |
-| Go 引擎入口 | 加载 embed 样例并运行协议服务 | [main.go](../../engine/cmd/jeval-engine/main.go) |
-| Go 协议服务 | 请求检查、运行搜索、事件分页、结构化错误和 shutdown | [server.go](../../engine/internal/protocol/server.go) |
-| 目录扫描服务 | 单个后台扫描、分批遍历、协作取消、状态快照和内存更新互斥 | [scan.go](../../engine/internal/protocol/scan.go) |
-| Codex 适配器 | 有界只读快照、消息/工具映射、物理行号与摘要、解析提示 | [import.go](../../engine/internal/adapters/codex/import.go) |
-| 数据与类型 | Run/Event 草案和三条合成记录 | [Go 模型](../../engine/internal/model/record.go)、[TS 类型](../../contracts/index.ts)、[样例](../../engine/internal/demo/records.json) |
+| 模块         | 当前职责                                                          | 代码入口                                                                                                                               |
+| ------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 渲染层       | 任务搜索、记录内搜索/类型筛选、时间线、输出与证据面板             | [App.tsx](../../apps/desktop/src/renderer/app/App.tsx)                                                                                 |
+| 候选选择窗口 | 原生 dialog 模态焦点、候选分页读取、搜索/概要、默认不选、批量确认 | [ScanPicker.tsx](../../apps/desktop/src/renderer/app/ScanPicker.tsx)                                                                   |
+| preload      | 暴露握手、查询、重启、无参数的文件/目录选择，以及扫描状态与取消   | [preload/index.ts](../../apps/desktop/src/preload/index.ts)                                                                            |
+| 主进程       | 窗口、系统文件选择、IPC 来源检查、引擎路径、启动与退出            | [main/index.ts](../../apps/desktop/src/main/index.ts)                                                                                  |
+| EngineClient | 握手、请求 ID、分包响应、超时、进程失败与停止                     | [engine-client.ts](../../apps/desktop/src/main/engine-client.ts)                                                                       |
+| Go 引擎入口  | 加载 embed 样例并运行协议服务                                     | [main.go](../../engine/cmd/jeval-engine/main.go)                                                                                       |
+| Go 协议服务  | 请求检查、运行搜索、事件分页、结构化错误和 shutdown               | [server.go](../../engine/internal/protocol/server.go)                                                                                  |
+| 目录扫描服务 | 单个后台扫描、分批遍历、协作取消、状态快照和内存更新互斥          | [scan.go](../../engine/internal/protocol/scan.go)                                                                                      |
+| Codex 适配器 | 有界只读快照、消息/工具映射、物理行号与摘要、解析提示             | [import.go](../../engine/internal/adapters/codex/import.go)                                                                            |
+| 数据与类型   | Run/Event 草案和三条合成记录                                      | [Go 模型](../../engine/internal/model/record.go)、[TS 类型](../../contracts/index.ts)、[样例](../../engine/internal/demo/records.json) |
 
 `engine/internal/storage`、`discovery`、`ingest`、`sync`、`analysis` 等目录仍为规划占位，不应从目录存在推断功能已经实现。
 
 ## 已采用的选择
 
-| 选择 | 当前依据与影响 |
-| --- | --- |
-| Electron + React + TypeScript | 按项目规划实现桌面浏览；主进程和渲染层分别构建 |
-| electron-vite 5 + Vite 7 | 使用满足 electron-vite peer dependency 范围的 Vite 版本；准确版本由锁文件固定 |
-| 独立 Go 二进制与 stdio | 无需本地端口；应用管理子进程生命周期，可独立测试协议 |
-| Go 标准库与 embed 演示数据 | 演示不依赖开发目录、数据库或私有日志，可验证打包链路 |
+| 选择                              | 当前依据与影响                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Electron + React + TypeScript     | 按项目规划实现桌面浏览；主进程和渲染层分别构建                                                               |
+| electron-vite 5 + Vite 7          | 使用满足 electron-vite peer dependency 范围的 Vite 版本；准确版本由锁文件固定                                |
+| 独立 Go 二进制与 stdio            | 无需本地端口；应用管理子进程生命周期，可独立测试协议                                                         |
+| Go 标准库与 embed 演示数据        | 演示不依赖开发目录、数据库或私有日志，可验证打包链路                                                         |
 | electron-builder + extraResources | Go 二进制与窗口图标随目录包携带；Electron 固定为 44.5.1；Windows exe 写入原创 ICO 资源，保留不签名的开发构建 |
-| 首个真实来源 Codex | 支持 classic/paginated 子集；一份 0.160.0 记录已在本地验证，完整版本兼容矩阵尚未验收 |
-| Windows x64 本机验证 | 目录包已运行；不据此声明安装验收或跨平台支持完成 |
+| 首个真实来源 Codex                | 支持 classic/paginated 子集；一份 0.160.0 记录已在本地验证，完整版本兼容矩阵尚未验收                         |
+| Windows x64 本机验证              | 目录包已运行；不据此声明安装验收或跨平台支持完成                                                             |
 
 SQLite 驱动和许可证仍待确定。当前来源身份使用规范化路径，内存快照带原始字节摘要；这是开发草案，不承诺外部导出兼容性。
 
@@ -54,3 +54,17 @@ SQLite 驱动和许可证仍待确定。当前来源身份使用规范化路径�
 事件搜索由 Go 在当前快照全量事件上按关键词和类型筛选后分页，保留原始 ID/序号/证据。渲染层延迟 150ms 查询，筛选变化清空旧页，使用查询标识与代次忽略迟到的加载更多响应；不读取源文件的预览截断部分。
 
 引擎故障目前通过请求失败传递给界面；尚无主动推送健康通知或数据落盘机制。端到端测试验证显式重启，尚未覆盖强制崩溃后的完整 UI 恢复流程。
+
+## 下一阶段演进约束（规划，未实现）
+
+按主规划 A–D 顺序，先验证驱动与身份语义，再把内存快照迁移为可恢复存储，之后实现交换格式和检查点。SQLite 仍是拟采用方向，具体驱动需以 Windows 构建、事务、迁移、打包和恢复验证决定；本次没有增加依赖或冻结字段。
+
+- Electron 主进程提供受控的应用数据目录，Go 负责数据库与快照写入、版本迁移和恢复。数据库文件不放在安装目录，渲染层继续不接收任意文件系统权限。
+- 区分来源身份、快照版本和事件引用。当前路径哈希加物理行号不足以独立定位历史内容；同路径替换不得让旧标注或分析悄悄指向新事件。正式字段同步修改 `contracts/` 与两端类型。
+- 已确认快照先完整准备，再发布可查询版本；数据与检查点保持一致提交。若使用独立正文/快照文件，需要先定义写入顺序、失败恢复和孤立文件清理。失败保留上一份可用快照，不只依赖退出时落盘。
+- 保存目录仅恢复用户配置；新发现的记录仍需要确认。首先支持已登记记录的手动完整重读更新，源文件删除/离线显示来源不可用并保留已保存快照，不静默删除用户数据。
+- 决定可恢复正文与原始证据的存储范围，再提供按需内容读取、搜索和导出。当前预览截断不能被包装为完整备份；可选原始附件与标准化内容分别说明。
+- paginated 消息去重依赖全文件 canonical 信息；检查点必须允许重算受影响事件。完整重读作为正确性基线，优化必须与该结果比较，不能以只处理尾部新行替代语义验证。
+- 持久化扩容同时补任务列表分页、按需正文和有界事件渲染；先测数据库查询与内存峰值，再调整现有配额。导出包重新导入不能依赖旧机器绝对路径，原来源定位与包内证据分别表达。
+
+恢复验收至少包括正常重启、强制中断、写入失败、迁移失败、源文件移走和重复更新。未实现前，本文前述“退出清空”“完整重读”“只搜索预览”等当前行为继续有效。
