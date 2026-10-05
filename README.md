@@ -6,7 +6,7 @@
 
 A local desktop workbench for inspecting agent runs. Explore timelines, tool output, and source evidence in one place.
 
-**Early development preview.** Scan a Codex directory, browse the discovered records, and choose which to import—or select all. Scanning alone never adds records. Single-file classic/paginated JSONL import is also available. Search record content, filter event types, and inspect source evidence locally without an API key. Imports are held in memory; persistence, automatic sync, and Jev analysis are still planned. Directory selection and search are tested with synthetic samples; one Codex 0.160.0 recording was previously validated.
+**Early development preview.** Scan a Codex directory, browse the discovered records, and choose which to import—or select all. Scanning alone never adds records. Single-file classic/paginated JSONL import is also available. Confirmed snapshots and directory settings persist locally in SQLite; browse saved previews offline, update a registered record manually, and page through tasks and events without an API key. Content is limited to 8 KiB previews per event; full content, automatic sync, export, and Jev analysis are still planned. Checks use synthetic samples; one Codex 0.160.0 recording was previously validated.
 
 ![jeval desktop preview](docs/design/m0-desktop.png)
 

@@ -240,7 +240,7 @@ export function ScanPicker({
         </details>
       )}
       <footer className="scan-dialog-footer">
-        <span>已选 {selected.size} 条 · 任务库最多保留 20 条导入记录</span>
+        <span>已选 {selected.size} 条 · 本地任务库最多保存 20 条记录 / 50,000 个事件</span>
         {busy ? (
           <>
             <span role="status">

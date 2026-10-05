@@ -1,5 +1,5 @@
-// Package storage is the A-slice SQLite validation backend. Desktop imports
-// still use memory until the B-slice wires application data and bounded queries.
+// Package storage persists immutable normalized previews and derived indexes
+// for bounded task and event queries. It never reads or changes source files.
 package storage
 
 import (
@@ -16,7 +16,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 1
+const schemaVersion = 2
+
+const (
+	maxCurrentSources = 20
+	maxCurrentEvents  = 50000
+	maxSnapshotEvents = 5000
+)
 
 var migrations = []string{`
 CREATE TABLE snapshots (
@@ -29,6 +35,28 @@ CREATE TABLE sources (
   id TEXT PRIMARY KEY,
   current_snapshot_id TEXT NOT NULL,
   FOREIGN KEY(id, current_snapshot_id) REFERENCES snapshots(source_id, id)
+);`, `
+CREATE TABLE snapshot_runs (
+  snapshot_id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  run_json BLOB NOT NULL,
+  event_count INTEGER NOT NULL CHECK(event_count >= 0),
+  FOREIGN KEY(source_id, snapshot_id) REFERENCES snapshots(source_id, id)
+);
+CREATE TABLE snapshot_events (
+  snapshot_id TEXT NOT NULL REFERENCES snapshots(id),
+  sequence INTEGER NOT NULL CHECK(sequence > 0),
+  id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  search_text TEXT NOT NULL,
+  event_json BLOB NOT NULL,
+  PRIMARY KEY(snapshot_id, sequence),
+  UNIQUE(snapshot_id, id)
+);
+CREATE INDEX snapshot_events_kind ON snapshot_events(snapshot_id, kind, sequence);
+CREATE TABLE directories (
+  id TEXT PRIMARY KEY,
+  path TEXT NOT NULL UNIQUE
 );`}
 
 type Store struct{ db *sql.DB }
@@ -82,6 +110,11 @@ func (s *Store) migrate(ctx context.Context, steps []string) error {
 		if _, err = tx.ExecContext(ctx, steps[i]); err != nil {
 			return fmt.Errorf("migration %d: %w", i+1, err)
 		}
+		if i == 1 {
+			if err = backfill(ctx, tx); err != nil {
+				return fmt.Errorf("migration 2: %w", err)
+			}
+		}
 	}
 	if _, err = tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version=%d", len(steps))); err != nil {
 		return err
@@ -105,7 +138,11 @@ func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) e
 	}
 	defer tx.Rollback()
 	info := run.ImportInfo
-	if _, err = tx.ExecContext(ctx, `INSERT INTO snapshots(id,source_id,record_json) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING`, info.SnapshotID, run.ID, data); err != nil {
+	if err = checkCapacity(ctx, tx, run.ID, run.EventCount); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `INSERT INTO snapshots(id,source_id,record_json) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING`, info.SnapshotID, run.ID, data)
+	if err != nil {
 		return err
 	}
 	// A code change without an adapter version bump must not rewrite history.
@@ -116,6 +153,15 @@ func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) e
 	if string(saved) != string(data) {
 		return errors.New("snapshot identity conflict: normalization changed without a version change")
 	}
+	inserted, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if inserted != 0 {
+		if err = writeIndex(ctx, tx, run, events); err != nil {
+			return err
+		}
+	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO sources(id,current_snapshot_id) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET current_snapshot_id=excluded.current_snapshot_id`, run.ID, info.SnapshotID); err != nil {
 		return err
 	}
@@ -123,46 +169,40 @@ func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) e
 }
 
 func (s *Store) Current(ctx context.Context, sourceID string) (model.Record, error) {
-	return s.read(ctx, `SELECT record_json FROM snapshots JOIN sources ON snapshots.id=sources.current_snapshot_id WHERE sources.id=?`, sourceID)
+	return s.read(ctx, `SELECT record_json,snapshots.source_id,snapshots.id FROM snapshots JOIN sources ON snapshots.id=sources.current_snapshot_id AND snapshots.source_id=sources.id WHERE sources.id=?`, sourceID)
 }
 
 func (s *Store) Snapshot(ctx context.Context, snapshotID string) (model.Record, error) {
-	return s.read(ctx, "SELECT record_json FROM snapshots WHERE id=?", snapshotID)
+	return s.read(ctx, "SELECT record_json,source_id,id FROM snapshots WHERE id=?", snapshotID)
 }
 
 func (s *Store) read(ctx context.Context, query, id string) (model.Record, error) {
 	var data []byte
+	var sourceID, snapshotID string
 	var record model.Record
-	if err := s.db.QueryRowContext(ctx, query, id).Scan(&data); err != nil {
+	if err := s.db.QueryRowContext(ctx, query, id).Scan(&data, &sourceID, &snapshotID); err != nil {
 		return record, err
 	}
-	if err := json.Unmarshal(data, &record); err != nil {
-		return model.Record{}, fmt.Errorf("invalid saved snapshot: %w", err)
-	}
-	if record.SchemaVersion != 1 || len(record.Runs) != 1 {
-		return model.Record{}, errors.New("unsupported saved record")
-	}
-	if err := validate(record.Runs[0], record.Events); err != nil {
+	record, err := decodeRecord(data)
+	if err != nil {
 		return model.Record{}, err
+	}
+	if record.Runs[0].ID != sourceID || record.Runs[0].ImportInfo.SnapshotID != snapshotID {
+		return model.Record{}, errors.New("saved snapshot key mismatch")
 	}
 	return record, nil
 }
 
 func validate(run model.Run, events []model.Event) error {
-	i := run.ImportInfo
-	if run.Demo || run.Source != "Codex" || run.ID == "" || i == nil || i.AdapterVersion == "" || i.File == "" {
-		return errors.New("storage requires a normalized Codex snapshot")
-	}
-	digest, err := hex.DecodeString(i.SHA256)
-	if err != nil || len(digest) != 32 || i.SnapshotID != model.SnapshotID(run.ID, i.SHA256, i.AdapterVersion) {
-		return errors.New("invalid snapshot identity")
+	if err := validateRun(run); err != nil {
+		return err
 	}
 	if run.EventCount != len(events) {
 		return errors.New("event count mismatch")
 	}
 	ids := make(map[string]bool, len(events))
 	for n, e := range events {
-		if e.ID == "" || ids[e.ID] || e.RunID != run.ID || e.Sequence != n+1 || e.Evidence.SourceID != run.ID || e.Evidence.SnapshotID != i.SnapshotID || e.Evidence.Line < 1 || e.Evidence.Location != i.File {
+		if err := validateEvent(run, e, n+1); err != nil || ids[e.ID] {
 			return errors.New("invalid event identity or evidence")
 		}
 		ids[e.ID] = true
@@ -173,4 +213,41 @@ func validate(run model.Run, events []model.Event) error {
 		}
 	}
 	return nil
+}
+
+func validateRun(run model.Run) error {
+	i := run.ImportInfo
+	if run.Demo || run.Source != "Codex" || run.ID == "" || i == nil || i.AdapterVersion == "" || i.File == "" {
+		return errors.New("storage requires a normalized Codex snapshot")
+	}
+	digest, err := hex.DecodeString(i.SHA256)
+	if err != nil || len(digest) != 32 || i.SnapshotID != model.SnapshotID(run.ID, i.SHA256, i.AdapterVersion) {
+		return errors.New("invalid snapshot identity")
+	}
+	if run.EventCount < 0 || run.EventCount > maxSnapshotEvents {
+		return errors.New("snapshot event limit exceeded")
+	}
+	return nil
+}
+
+func validateEvent(run model.Run, e model.Event, sequence int) error {
+	i := run.ImportInfo
+	if e.ID == "" || e.RunID != run.ID || e.Sequence != sequence || sequence < 1 || sequence > run.EventCount || e.Evidence.SourceID != run.ID || e.Evidence.SnapshotID != i.SnapshotID || e.Evidence.Line < 1 || e.Evidence.Location != i.File {
+		return errors.New("invalid event identity or evidence")
+	}
+	return nil
+}
+
+func decodeRecord(data []byte) (model.Record, error) {
+	var record model.Record
+	if err := json.Unmarshal(data, &record); err != nil {
+		return model.Record{}, fmt.Errorf("invalid saved snapshot: %w", err)
+	}
+	if record.SchemaVersion != 1 || len(record.Runs) != 1 {
+		return model.Record{}, errors.New("unsupported saved record")
+	}
+	if err := validate(record.Runs[0], record.Events); err != nil {
+		return model.Record{}, err
+	}
+	return record, nil
 }

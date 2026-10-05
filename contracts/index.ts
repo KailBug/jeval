@@ -44,6 +44,10 @@ export interface ImportResult {
   run: Run
   replaced: boolean
 }
+export interface CodexDirectory {
+  id: string
+  path: string
+}
 export interface ScanStatus {
   id: string
   root: string
@@ -112,13 +116,17 @@ export interface EventQuery {
 export interface DesktopAPI {
   readonly platform: string
   importCodex(): Promise<ImportResult | null>
-  scanCodex(): Promise<ScanStatus | null>
+  updateCodex(runId: string): Promise<ImportResult>
+  scanCodex(directoryId?: string): Promise<ScanStatus | null>
+  listCodexDirectories(): Promise<{ items: CodexDirectory[] }>
+  removeCodexDirectory(id: string): Promise<{ ok: true }>
   scanStatus(id: string): Promise<ScanStatus>
   cancelScan(id: string): Promise<ScanStatus>
   scanCandidates(id: string, offset?: number): Promise<Page<ScanCandidate>>
   importScanSelection(id: string, ids: string[]): Promise<ScanStatus>
   hello(): Promise<Hello>
   listRuns(query: RunQuery): Promise<Page<Run>>
+  getRun(runId: string): Promise<Run>
   listEvents(query: EventQuery): Promise<Page<RunEvent>>
   restartEngine(): Promise<Hello>
 }

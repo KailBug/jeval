@@ -6,6 +6,7 @@ export interface BrowseLocation {
   runId?: string
   search: string
   status: RunStatus | 'all'
+  offset?: number
 }
 
 const initial: BrowseLocation = { source: 'demo', search: '', status: 'all' }
@@ -20,7 +21,8 @@ export function useBrowseHistory() {
         current.source === next.source &&
         current.runId === next.runId &&
         current.search === next.search &&
-        current.status === next.status
+        current.status === next.status &&
+        (current.offset ?? 0) === (next.offset ?? 0)
       )
         return old
       const entries = [...old.entries.slice(0, old.index + 1), next].slice(-100)
@@ -38,7 +40,8 @@ export function useBrowseHistory() {
   const resolveSelection = useCallback((ids: string[]) => {
     setHistory((old) => {
       const current = old.entries[old.index]
-      if (current.runId && ids.includes(current.runId)) return old
+      // The selected record may be on another page. Details resolve it by ID.
+      if (current.runId) return old
       return {
         ...old,
         entries: old.entries.map((entry, i) =>

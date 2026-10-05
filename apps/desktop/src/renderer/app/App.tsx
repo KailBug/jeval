@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { useBrowseHistory } from './browse-history'
 import { ScanPicker } from './ScanPicker'
 import logo from '../../../resources/jeval.svg'
 import type {
   Hello,
+  CodexDirectory,
   Page,
   Run,
   RunEvent,
@@ -53,10 +54,10 @@ export function App() {
   const [hello, setHello] = useState<Hello>()
   const [error, setError] = useState('')
   const history = useBrowseHistory()
-  const { source, search, status, runId } = history.location
+  const { source, search, status, runId, offset = 0 } = history.location
   const { resolveSelection } = history
   const [runs, setRuns] = useState<Page<Run>>()
-  const selected = runs?.items.find((run) => run.id === runId)
+  const [selected, setSelected] = useState<Run>()
   const [loading, setLoading] = useState(true)
   const [revision, setRevision] = useState(0)
   const [reconnecting, setReconnecting] = useState(false)
@@ -67,6 +68,7 @@ export function App() {
   const [choosingDirectory, setChoosingDirectory] = useState(false)
   const [scanError, setScanError] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [directories, setDirectories] = useState<CodexDirectory[]>([])
   const scanning = scan?.state === 'running' || scan?.state === 'cancelling'
 
   useEffect(() => {
@@ -100,16 +102,20 @@ export function App() {
     }
   }, [scan?.id, scan?.phase, scanning])
 
-  async function scanCodex() {
+  async function scanCodex(directoryId?: string) {
     setChoosingDirectory(true)
     setImportError('')
     try {
-      const result = await window.jeval.scanCodex()
+      const result = await window.jeval.scanCodex(directoryId)
       if (!result) return
       setScan(result)
       setPickerOpen(false)
       setScanError('')
       setNotice('')
+      void window.jeval
+        .listCodexDirectories()
+        .then((value) => setDirectories(value.items))
+        .catch((e) => setImportError(errorMessage(e)))
     } catch (e) {
       setImportError(errorMessage(e))
     } finally {
@@ -128,6 +134,20 @@ export function App() {
       }
     } catch (e) {
       setScanError(errorMessage(e))
+    }
+  }
+
+  async function removeDirectory(id: string) {
+    setImportError('')
+    setChoosingDirectory(true)
+    try {
+      await window.jeval.removeCodexDirectory(id)
+      setDirectories((await window.jeval.listCodexDirectories()).items)
+      setNotice('已移除保存的目录；已导入的快照仍可浏览。')
+    } catch (e) {
+      setImportError(errorMessage(e))
+    } finally {
+      setChoosingDirectory(false)
     }
   }
 
@@ -152,11 +172,44 @@ export function App() {
   useEffect(() => {
     if (!hello) return
     let active = true
+    void window.jeval
+      .listCodexDirectories()
+      .then((value) => {
+        if (active) setDirectories(value.items)
+      })
+      .catch((e) => {
+        if (active) setImportError(errorMessage(e))
+      })
+    return () => {
+      active = false
+    }
+  }, [hello, revision])
+
+  useEffect(() => {
+    setSelected(undefined)
+    if (!hello || !runId) return
+    let active = true
+    void window.jeval
+      .getRun(runId)
+      .then((run) => {
+        if (active) setSelected(run)
+      })
+      .catch((e) => {
+        if (active) setError(errorMessage(e))
+      })
+    return () => {
+      active = false
+    }
+  }, [hello, runId, revision])
+
+  useEffect(() => {
+    if (!hello) return
+    let active = true
     setLoading(true)
     setRuns(undefined)
     const timer = setTimeout(() => {
       window.jeval
-        .listRuns({ search, status, source, limit: 100 })
+        .listRuns({ search, status, source, offset, limit: 10 })
         .then((page) => {
           if (!active) return
           setRuns(page)
@@ -174,7 +227,7 @@ export function App() {
       active = false
       clearTimeout(timer)
     }
-  }, [hello, search, status, source, revision, resolveSelection])
+  }, [hello, search, status, source, offset, revision, resolveSelection])
 
   async function importCodex() {
     setImporting(true)
@@ -192,6 +245,22 @@ export function App() {
     }
   }
 
+  async function updateCodex() {
+    if (!selected || selected.demo) return
+    setImporting(true)
+    setImportError('')
+    try {
+      const result = await window.jeval.updateCodex(selected.id)
+      setSelected(result.run)
+      setNotice(`已更新记录 · ${result.run.eventCount} 个事件`)
+      setRevision((n) => n + 1)
+    } catch (e) {
+      setImportError(`${errorMessage(e)}；已保存的快照保留。`)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   async function reconnect() {
     setReconnecting(true)
     setError('')
@@ -200,8 +269,7 @@ export function App() {
       setScan(undefined)
       setPickerOpen(false)
       setScanError('')
-      history.reset()
-      setNotice('引擎已重新连接。本次启动的导入记录已清除，请重新导入。')
+      setNotice('引擎已重新连接，已导入的快照和保存的目录已恢复。')
       setRevision((n) => n + 1)
     } catch (e) {
       setError(errorMessage(e))
@@ -305,7 +373,7 @@ export function App() {
             <div className="topbar-actions">
               <button
                 className="button"
-                onClick={scanCodex}
+                onClick={() => void scanCodex()}
                 disabled={!hello || importing || choosingDirectory || scanning || reconnecting}
               >
                 <Icon name="search" />
@@ -334,9 +402,43 @@ export function App() {
             <span>
               {source === 'demo'
                 ? '当前为合成演示。可选择 Codex 文件或目录，查看本地执行记录。'
-                : '仅在本地读取所选文件或目录，记录保留到引擎退出；再次扫描或导入可更新快照。'}
+                : '已导入快照保存在本地，重启或源文件移走后仍可浏览；手动更新会重读已登记的来源文件。'}
             </span>
           </div>
+          {source === 'codex' && (
+            <details className="directory-panel">
+              <summary>保存的 Codex 目录 · {directories.length}</summary>
+              <p>启动时不会自动扫描。重新发现后，选择要导入的记录；移除目录保留已导入的快照。</p>
+              {directories.length === 0 && <p>通过“发现本地任务”选择的有效目录会保存在这里。</p>}
+              <ul>
+                {directories.map((directory) => (
+                  <li key={directory.id}>
+                    <span title={directory.path}>{directory.path}</span>
+                    <button
+                      className="text-button"
+                      onClick={() => void scanCodex(directory.id)}
+                      disabled={
+                        !hello || importing || choosingDirectory || scanning || reconnecting
+                      }
+                      aria-label={`重新发现 ${directory.path}`}
+                    >
+                      重新发现
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() => void removeDirectory(directory.id)}
+                      disabled={
+                        !hello || importing || choosingDirectory || scanning || reconnecting
+                      }
+                      aria-label={`移除目录 ${directory.path}`}
+                    >
+                      移除目录
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           {scan && (
             <section className="scan-panel" aria-label="Codex 目录扫描">
               <div className="scan-summary">
@@ -435,7 +537,11 @@ export function App() {
                       aria-label="筛选状态"
                       value={status}
                       onChange={(event) =>
-                        history.update({ status: event.target.value as RunStatus | 'all' })
+                        history.update({
+                          status: event.target.value as RunStatus | 'all',
+                          offset: 0,
+                          runId: undefined
+                        })
                       }
                     >
                       <option value="all">全部状态</option>
@@ -450,7 +556,9 @@ export function App() {
                       aria-label="搜索任务"
                       placeholder="搜索任务或项目"
                       value={search}
-                      onChange={(event) => history.update({ search: event.target.value })}
+                      onChange={(event) =>
+                        history.update({ search: event.target.value, offset: 0, runId: undefined })
+                      }
                       maxLength={200}
                     />
                   </label>
@@ -477,7 +585,7 @@ export function App() {
                       <button
                         className="text-button"
                         onClick={() => {
-                          history.update({ search: '', status: 'all' })
+                          history.update({ search: '', status: 'all', offset: 0, runId: undefined })
                         }}
                       >
                         清除筛选
@@ -503,6 +611,27 @@ export function App() {
                     </button>
                   ))}
                 </div>
+                <nav className="page-controls run-pages" aria-label="任务分页">
+                  <button
+                    className="button"
+                    disabled={loading || offset === 0}
+                    onClick={() => history.update({ offset: Math.max(0, offset - 10) })}
+                  >
+                    上一页任务
+                  </button>
+                  <span>
+                    {runs?.total
+                      ? `${offset + 1}–${offset + runs.items.length} / ${runs.total}`
+                      : '0 条'}
+                  </span>
+                  <button
+                    className="button"
+                    disabled={loading || runs?.nextOffset == null}
+                    onClick={() => history.update({ offset: runs?.nextOffset ?? offset })}
+                  >
+                    下一页任务
+                  </button>
+                </nav>
                 <div className="list-footer">
                   <Icon name="monitor" />
                   <span>本地浏览，无需 API key</span>
@@ -512,6 +641,9 @@ export function App() {
                 <RunDetail
                   key={selected.id + ':' + (selected.importInfo?.sha256 ?? '') + ':' + revision}
                   run={selected}
+                  onUpdate={updateCodex}
+                  updating={importing}
+                  updateDisabled={choosingDirectory || !!scanning || reconnecting}
                 />
               ) : (
                 <div className="detail-empty">
@@ -528,7 +660,17 @@ export function App() {
   )
 }
 
-function RunDetail({ run }: { run: Run }) {
+function RunDetail({
+  run,
+  onUpdate,
+  updating,
+  updateDisabled
+}: {
+  run: Run
+  onUpdate(): Promise<void>
+  updating: boolean
+  updateDisabled: boolean
+}) {
   const [events, setEvents] = useState<RunEvent[]>([])
   const [nextOffset, setNextOffset] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -538,15 +680,12 @@ function RunDetail({ run }: { run: Run }) {
   const [eventSearch, setEventSearch] = useState('')
   const [eventKind, setEventKind] = useState<RunEvent['kind'] | 'all'>('all')
   const [total, setTotal] = useState(0)
-  const queryKey = `${run.id}:${eventSearch}:${eventKind}`
-  const currentQuery = useRef(queryKey)
-  const queryVersion = useRef(0)
-  currentQuery.current = queryKey
+  const [offset, setOffset] = useState(0)
+  const [previousOffsets, setPreviousOffsets] = useState<number[]>([])
   const filtered = eventSearch.trim() !== '' || eventKind !== 'all'
 
   useEffect(() => {
     let active = true
-    queryVersion.current++
     setLoading(true)
     setEvents([])
     setNextOffset(null)
@@ -554,7 +693,7 @@ function RunDetail({ run }: { run: Run }) {
     setError('')
     const timer = setTimeout(() => {
       void window.jeval
-        .listEvents({ runId: run.id, search: eventSearch, kind: eventKind, limit: 50 })
+        .listEvents({ runId: run.id, search: eventSearch, kind: eventKind, offset, limit: 50 })
         .then((page) => {
           if (active) {
             setEvents(page.items)
@@ -572,33 +711,22 @@ function RunDetail({ run }: { run: Run }) {
     }, 150)
     return () => {
       active = false
-      queryVersion.current++
       clearTimeout(timer)
     }
-  }, [run.id, eventSearch, eventKind, attempt])
+  }, [run.id, eventSearch, eventKind, offset, attempt])
 
-  async function loadMore() {
+  function nextPage() {
     if (nextOffset === null || loading) return
-    const version = queryVersion.current
+    setPreviousOffsets((old) => [...old, offset])
+    setOffset(nextOffset)
     setLoading(true)
-    try {
-      const page = await window.jeval.listEvents({
-        runId: run.id,
-        search: eventSearch,
-        kind: eventKind,
-        offset: nextOffset,
-        limit: 50
-      })
-      if (currentQuery.current !== queryKey || queryVersion.current !== version) return
-      setEvents((old) => [...old, ...page.items])
-      setNextOffset(page.nextOffset)
-      setError('')
-    } catch (e) {
-      if (currentQuery.current === queryKey && queryVersion.current === version)
-        setError(errorMessage(e))
-    } finally {
-      if (currentQuery.current === queryKey && queryVersion.current === version) setLoading(false)
-    }
+  }
+
+  function firstPage() {
+    setOffset(0)
+    setPreviousOffsets([])
+    setLoading(true)
+    setNextOffset(null)
   }
 
   return (
@@ -614,6 +742,12 @@ function RunDetail({ run }: { run: Run }) {
             <Status status={run.status} />
             <span>{date(run.startedAt)}</span>
             <span>{run.demo ? '合成演示记录' : 'Codex 本地记录'}</span>
+            {!run.demo && (
+              <button className="button" onClick={onUpdate} disabled={updating || updateDisabled}>
+                <Icon name="refresh" />
+                {updating ? '正在更新…' : '更新已登记记录'}
+              </button>
+            )}
           </div>
         </div>
         {run.importInfo && (
@@ -661,6 +795,11 @@ function RunDetail({ run }: { run: Run }) {
             )}
           </details>
         )}
+        {!run.demo && (
+          <p className="snapshot-completeness">
+            已保存标准化事件和每条正文最多 8 KiB 的预览；未保存原始文件备份，搜索不覆盖截断部分。
+          </p>
+        )}
         <div className="metrics">
           <div>
             <span>执行耗时</span>
@@ -698,8 +837,7 @@ function RunDetail({ run }: { run: Run }) {
             maxLength={200}
             onChange={(event) => {
               setEventSearch(event.target.value)
-              setLoading(true)
-              setNextOffset(null)
+              firstPage()
             }}
           />
           <select
@@ -707,8 +845,7 @@ function RunDetail({ run }: { run: Run }) {
             value={eventKind}
             onChange={(event) => {
               setEventKind(event.target.value as RunEvent['kind'] | 'all')
-              setLoading(true)
-              setNextOffset(null)
+              firstPage()
             }}
           >
             <option value="all">全部事件</option>
@@ -728,10 +865,7 @@ function RunDetail({ run }: { run: Run }) {
         {error && (
           <div className="detail-error" role="alert">
             {error}
-            <button
-              className="text-button"
-              onClick={() => (nextOffset !== null ? void loadMore() : setAttempt((n) => n + 1))}
-            >
+            <button className="text-button" onClick={() => setAttempt((n) => n + 1)}>
               重试加载
             </button>
           </div>
@@ -746,6 +880,7 @@ function RunDetail({ run }: { run: Run }) {
                   onClick={() => {
                     setEventSearch('')
                     setEventKind('all')
+                    firstPage()
                   }}
                 >
                   清除事件筛选
@@ -835,11 +970,23 @@ function RunDetail({ run }: { run: Run }) {
               正在加载事件…
             </p>
           )}
-          {nextOffset !== null && (
-            <button className="button load-more" onClick={loadMore} disabled={loading}>
-              加载更多事件
+          <nav className="page-controls event-pages" aria-label="事件分页">
+            <button
+              className="button"
+              disabled={loading || previousOffsets.length === 0}
+              onClick={() => {
+                setOffset(previousOffsets[previousOffsets.length - 1])
+                setPreviousOffsets((old) => old.slice(0, -1))
+                setLoading(true)
+              }}
+            >
+              上一页事件
             </button>
-          )}
+            <span>{total ? `${offset + 1}–${offset + events.length} / ${total}` : '0 条'}</span>
+            <button className="button" onClick={nextPage} disabled={loading || nextOffset === null}>
+              下一页事件
+            </button>
+          </nav>
           {!loading && nextOffset === null && !error && (
             <div className="timeline-end">
               {filtered
