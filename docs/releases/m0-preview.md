@@ -1,6 +1,6 @@
 # M0 开发预览验收
 
-更新日期：2026-10-05（发布门槛修订）。版本：`0.1.0-dev.0`。状态：**历史本机目录包验证通过，尚未发布**。本次仅核对文档；下文应用检查记录来自 2026-10-04，未重新构建或验收安装包。
+更新日期：2026-10-05。版本：`0.1.0-dev.0`。状态：**本机目录包验证通过，尚未发布**。本轮 A 切片已重新构建目录包，新增随包 SQLite 存储检查；具体证据见 [M0 进度](../development/m0-progress.md)。下方此前轮次的应用检查按原日期保留，NSIS/干净环境仍未验收。
 
 当前交付合成浏览、Codex classic/paginated 文件导入、目录发现后二级窗口选择导入、记录内搜索/事件类型筛选与历史导航。扫描不会自动加入任务库。此前一份 0.160.0 记录曾在目录包中验证；本轮使用合成目录，完整版本矩阵、真实目录、安装流程和公开 Alpha 范围均未验收。
 
@@ -19,6 +19,8 @@
 ## 产物与运行
 
 `npm run pack` 在当前 Windows 环境生成 `release/win-unpacked`；桌面入口为 `jeval.exe`，Go 引擎位于 `resources/engine/jeval-engine.exe`。必须保留整个目录，产物不纳入版本控制。
+
+2026-10-05 A 切片新增无 cgo SQLite 驱动及 `resources/engine/THIRD-PARTY-NOTICES.txt`。`JEVAL_STORAGE_EXECUTABLE` 指向随包引擎时，`npm run test:storage` 通过；该检查只验证合成数据库的迁移/写入/重开，不代表桌面持久化已接入，也不代替安装验收。源文件字节未被存储原型备份，正文仍是预览。
 
 `npm run dist:win` 已配置为 NSIS 构建入口，但本轮没有生成或验证 NSIS 安装包。当前配置启用 Windows 图标/版本资源写入，使用 `signExecutable: false` 关闭代码签名；不作为正式签名发布配置。运行与 GoLand 常见问题见 [开发运行指南](../development/getting-started.md)。
 

@@ -51,7 +51,8 @@
         "to": "engine",
         "filter": [
           "jeval-engine",
-          "jeval-engine.exe"
+          "jeval-engine.exe",
+          "THIRD-PARTY-NOTICES.txt"
         ]
       }
     ],

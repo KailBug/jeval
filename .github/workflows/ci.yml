@@ -23,6 +23,9 @@ jobs:
       - run: npm run check
       - run: npm run test:e2e
       - run: npm run pack
+      - run: npm run test:storage
+        env:
+          JEVAL_STORAGE_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
       - run: npm run test:e2e
         env:
           JEVAL_PACKAGED_EXECUTABLE: release/win-unpacked/jeval.exe

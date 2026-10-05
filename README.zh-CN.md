@@ -12,7 +12,7 @@
 
 ## 本地运行
 
-需要 Node.js 22.12+ 和 Go 1.24+。使用 Electron、React、TypeScript 与 Go 构建，目前在 Windows x64 上验证。
+需要 Node.js 22.12+ 和 Go 1.26+。使用 Electron、React、TypeScript 与 Go 构建，目前在 Windows x64 上验证。
 
 ```sh
 npm ci

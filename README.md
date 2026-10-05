@@ -12,7 +12,7 @@ A local desktop workbench for inspecting agent runs. Explore timelines, tool out
 
 ## Run locally
 
-Requires Node.js 22.12+ and Go 1.24+. Built with Electron, React, TypeScript, and Go; currently tested on Windows x64.
+Requires Node.js 22.12+ and Go 1.26+. Built with Electron, React, TypeScript, and Go; currently tested on Windows x64.
 
 ```sh
 npm ci

@@ -10,6 +10,7 @@ export type EventKind =
   | 'lifecycle'
   | 'error'
 export interface EvidenceRef {
+  snapshotId?: string
   sourceId: string
   location: string
   line: number
@@ -26,6 +27,8 @@ export interface Run {
   tokens: number | null
   eventCount: number
   importInfo?: {
+    adapterVersion: string
+    snapshotId: string
     file: string
     sha256: string
     sessionId: string
