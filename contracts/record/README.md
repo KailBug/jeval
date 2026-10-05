@@ -15,7 +15,7 @@ TypeScript 定义位于 `contracts/index.ts`，Go 对应结构位于 `engine/int
 - Codex 的 `source=Codex`、`demo=false`；事件 line 为实际文件物理行号，事件 ID 由规范化路径身份和行号组成。标题取第一条非空 user 消息前 80 个字符；正文最多保留 8 KiB 预览，截断有提示。
 - 文本按普通文本渲染，不执行日志中的 HTML、链接或命令。
 
-本草案已补充导入来源、会话标识和快照摘要，尚未覆盖完整 Source、Session、Artifact、Finding、Annotation 与同步检查点。需基于真实脱敏样本进一步验证，再冻结可导入导出的记录格式。当前 schemaVersion 仅标识开发草案，不代表已具备外部兼容承诺。
+本草案已补充导入来源、会话标识和快照摘要，尚未覆盖完整 Source、Session、Artifact、Finding、Annotation 与同步检查点。C 将必要的 Codex 标准化预览子集冻结为 [原生交换 v1](../exchange/README.md)，使用独立 formatVersion，不据此宣布完整来源模型或任意旧客户端兼容。真实版本与安装验收继续记录在开发文档。
 
 ## 来源、快照与永久引用
 
@@ -26,3 +26,4 @@ TypeScript 定义位于 `contracts/index.ts`，Go 对应结构位于 `engine/int
 - `snapshotId` 为 `snapshot-` 加小写 SHA-256 十六进制。输入是 UTF-8 紧凑 JSON 数组 `[1,sourceId,sha256,adapterVersion]`，其中 1 为记录 schemaVersion，摘要是实际读取的原始字节 SHA-256。实现见 [snapshot.go](../../engine/internal/model/snapshot.go)。同一路径相同字节和适配器规则产生相同快照；仅追加空行也会产生新快照。
 - 永久事件引用是 `(snapshotId,event.id)`，父事件只在同一快照中解析。物理行号与事件 ID 不能单独充当跨版本引用；旧标注/分析不得在更新后自动指向新快照。
 - `file` / `location` 是读取时的来源定位，`sha256` 是来源字节摘要。B 的桌面任务库保存标准化预览，正文规则及 adapterVersion 沿用 A；没有原始字节副本，离线读取预览不代表能离线重建原文件。搜索只覆盖已保存预览，完整正文后置；C 的交换包必须声明这一范围，不将来源摘要描述为包内原文件摘要。
+- C 的 JSON 包保留此来源/快照/事件身份和所有已保存事件，导入不访问定位中的文件，也不授予来源更新权限。任务库可返回 `Run.readOnly=true` 表示外部导入的只读资料，此字段为本地派生权限，不写入不可变快照或原生交换包。交换的严格字段、版本、大小、null 和引用校验以 [交换契约](../exchange/README.md) 为准。

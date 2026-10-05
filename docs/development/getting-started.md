@@ -32,7 +32,15 @@ npm run dev
 
 打开记录，在执行时间线顶部输入消息、工具或输出关键词，可同时筛选事件类型。查询覆盖当前快照的全部事件，然后分页；原始序号、证据行号和父事件关系保留。搜索忽略英文大小写，匹配标题、正文及角色；清除筛选返回全部事件。范围仅包括已保存的正文预览，源文件中被截断的部分不参与搜索。
 
-任务列表每页 10 条，详情每次最多展示 50 个事件；使用上一页/下一页翻页，新页替换当前页。协议会按编码字节预算缩短事件页，界面使用返回的 nextOffset。当前只保存标准化文本预览，没有原始 JSONL 副本或完整正文；离线查看不代表完整备份。
+任务列表每页最多请求 10 条，详情每次最多请求 50 个事件；使用上一页/下一页翻页，新页替换当前页。协议会按编码字节预算缩短任务页和事件页，界面按 nextOffset 和已访问偏移翻页。当前只保存标准化文本预览，没有原始 JSONL 副本或完整正文；离线查看不代表完整备份。
+
+## 导出与导入 jeval 记录
+
+打开一个已保存的 Codex 任务，在导出区核对快照、事件总数与内容范围，选择 JSON 或 Markdown 并指定保存位置。导出包含当前快照全部事件，不受搜索、类型筛选或当前页影响；来源文件离线也可导出。JSON 可通过侧栏“导入 jeval 记录”选择后加入另一资料库，Markdown 供阅读，不是可再导入格式。
+
+输出包含已保存预览、来源路径和证据，未自动脱敏，不包含原始 JSONL 或截断部分。分享前检查内容。正文预算为 8 KiB，既有截断提示另计；文件上限 64 MiB。只支持单个 Codex 快照，演示和多任务包尚不支持。
+
+新导入的交换记录标记只读，不会根据包中的旧路径读取本机文件；需显式重新导入本地 Codex 来源才启用更新。同一当前快照重复导入不新增任务，同来源已有不同当前版本会拒绝冲突并保留已有记录。取消打开/保存选择器不改变任务库或文件；保存失败保留旧目标，运行中的文件写入尚无取消按钮。格式与版本规则见 [交换契约](../../contracts/exchange/README.md)，检查依据见 [M3 进度](m3-progress.md)。
 
 ## 构建与检查
 
@@ -81,6 +89,19 @@ try {
 ```
 
 也可直接运行 `& .\bin\jeval-engine.exe --storage-check $env:TEMP`，目录参数必须为已存在的绝对路径。成功返回 storageCheck=ok 的 JSON，失败返回非零退出码。测试清空子进程 PATH，只验证不调用外部工具，不代替干净 Windows 安装验收。实现和限制见 [存储验证](../architecture/storage-validation.md)。构建会收集 Go 依赖许可文本并随引擎分发 `THIRD-PARTY-NOTICES.txt`。
+
+C 的跨进程交换检查包含在 `npm test` / `npm run check`。复核目录包自带引擎时：
+
+```powershell
+$env:JEVAL_EXCHANGE_EXECUTABLE = 'release/win-unpacked/resources/engine/jeval-engine.exe'
+try {
+  node --import tsx --test tests/integration/record-exchange.test.ts
+} finally {
+  Remove-Item Env:JEVAL_EXCHANGE_EXECUTABLE -ErrorAction SilentlyContinue
+}
+```
+
+此检查仍由开发机 Node 执行合成样本和独立临时库，不等同于无开发工具的安装或生产升级验收。
 
 ### 桌面入口
 

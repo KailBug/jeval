@@ -25,7 +25,7 @@ type libraryStore interface {
 func hello(persistent bool) map[string]any {
 	capabilities := []string{"demo", "runs.list", "runs.get", "runs.events", "codex.import", "codex.update", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}
 	if persistent {
-		capabilities = append(capabilities, "persistent-library", "codex.directories.list", "codex.directories.remove")
+		capabilities = append(capabilities, "persistent-library", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
 	}
 	return map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": capabilities}
 }
@@ -86,6 +86,9 @@ func (s *scanService) importRun(req Request) Response {
 			return failure(req.ID, "INVALID_PARAMS", "Expected a registered run ID (max 128 bytes)")
 		}
 		for _, run := range s.record.Runs {
+			if run.ID == params.RunID && run.ReadOnly {
+				return failure(req.ID, "IMPORT_FAILED", "交换记录只读，嵌入的来源路径未获本机授权；请显式选择来源文件后重新导入")
+			}
 			if run.ID == params.RunID && !run.Demo && run.Source == "Codex" && run.ImportInfo != nil {
 				path = run.ImportInfo.File
 				break

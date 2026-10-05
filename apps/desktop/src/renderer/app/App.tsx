@@ -6,6 +6,8 @@ import logo from '../../../resources/jeval.svg'
 import type {
   Hello,
   CodexDirectory,
+  ExportResult,
+  RecordExportFormat,
   Page,
   Run,
   RunEvent,
@@ -57,11 +59,16 @@ export function App() {
   const { source, search, status, runId, offset = 0 } = history.location
   const { resolveSelection } = history
   const [runs, setRuns] = useState<Page<Run>>()
+  const [runPageOffsets, setRunPageOffsets] = useState<number[]>([0])
+  const runPageIndex = runPageOffsets.indexOf(offset)
+  const previousRunOffset = runPageIndex > 0 ? runPageOffsets[runPageIndex - 1] : null
   const [selected, setSelected] = useState<Run>()
   const [loading, setLoading] = useState(true)
   const [revision, setRevision] = useState(0)
   const [reconnecting, setReconnecting] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [importingRecord, setImportingRecord] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [importError, setImportError] = useState('')
   const [notice, setNotice] = useState('')
   const [scan, setScan] = useState<ScanStatus>()
@@ -70,6 +77,12 @@ export function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [directories, setDirectories] = useState<CodexDirectory[]>([])
   const scanning = scan?.state === 'running' || scan?.state === 'cancelling'
+  const busy = importing || exporting || choosingDirectory || reconnecting
+
+  useEffect(() => {
+    setRunPageOffsets([0])
+    history.update({ offset: 0 })
+  }, [source, search, status, revision, history.update])
 
   useEffect(() => {
     if (!scan || !scanning) return
@@ -212,6 +225,13 @@ export function App() {
         .listRuns({ search, status, source, offset, limit: 10 })
         .then((page) => {
           if (!active) return
+          // Encoded metadata can shorten a requested page. Keep actual page
+          // boundaries for back navigation instead of subtracting the limit.
+          setRunPageOffsets((old) =>
+            [
+              ...new Set([...old, offset, ...(page.nextOffset === null ? [] : [page.nextOffset])])
+            ].sort((a, b) => a - b)
+          )
           setRuns(page)
           resolveSelection(page.items.map((run) => run.id))
           setError('')
@@ -246,7 +266,7 @@ export function App() {
   }
 
   async function updateCodex() {
-    if (!selected || selected.demo) return
+    if (!selected || selected.demo || selected.readOnly) return
     setImporting(true)
     setImportError('')
     try {
@@ -258,6 +278,35 @@ export function App() {
       setImportError(`${errorMessage(e)}；已保存的快照保留。`)
     } finally {
       setImporting(false)
+    }
+  }
+
+  async function importRecord() {
+    setImporting(true)
+    setImportingRecord(true)
+    setImportError('')
+    setNotice('')
+    try {
+      const result = await window.jeval.importRecord()
+      if (!result) return
+      history.navigate({ source: 'codex', runId: result.run.id, search: '', status: 'all' })
+      setNotice(`已导入 jeval 记录 · ${result.run.eventCount} 个事件`)
+      setRevision((n) => n + 1)
+    } catch (e) {
+      setImportError(errorMessage(e))
+    } finally {
+      setImporting(false)
+      setImportingRecord(false)
+    }
+  }
+
+  async function exportRecord(format: RecordExportFormat): Promise<ExportResult | null> {
+    if (!selected || selected.demo) return null
+    setExporting(true)
+    try {
+      return await window.jeval.exportRecord(selected.id, format)
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -303,7 +352,7 @@ export function App() {
             className="icon-button"
             aria-label="后退"
             title="后退"
-            disabled={!history.canBack || loading || importing}
+            disabled={!history.canBack || loading || busy}
             onClick={() => history.move(-1)}
           >
             <Icon name="arrow-left" />
@@ -312,7 +361,7 @@ export function App() {
             className="icon-button"
             aria-label="前进"
             title="前进"
-            disabled={!history.canForward || loading || importing}
+            disabled={!history.canForward || loading || busy}
             onClick={() => history.move(1)}
           >
             <Icon name="arrow-right" />
@@ -337,6 +386,7 @@ export function App() {
           <button
             className={'source-item ' + (source === 'demo' ? 'selected' : '')}
             aria-pressed={source === 'demo'}
+            disabled={busy}
             onClick={() =>
               source !== 'demo' && history.navigate({ source: 'demo', search: '', status: 'all' })
             }
@@ -348,6 +398,7 @@ export function App() {
           <button
             className={'source-item ' + (source === 'codex' ? 'selected' : '')}
             aria-pressed={source === 'codex'}
+            disabled={busy}
             onClick={() =>
               source !== 'codex' && history.navigate({ source: 'codex', search: '', status: 'all' })
             }
@@ -355,6 +406,14 @@ export function App() {
             <Icon name="terminal" />
             <span>Codex</span>
             <span className="source-count">本地</span>
+          </button>
+          <button
+            className="button sidebar-import"
+            onClick={importRecord}
+            disabled={!hello || busy || scanning}
+          >
+            <Icon name="folder" />
+            {importingRecord ? '正在导入 jeval…' : '导入 jeval 记录'}
           </button>
           <div className="sidebar-bottom">
             <div className="local-label">
@@ -374,7 +433,7 @@ export function App() {
               <button
                 className="button"
                 onClick={() => void scanCodex()}
-                disabled={!hello || importing || choosingDirectory || scanning || reconnecting}
+                disabled={!hello || busy || scanning}
               >
                 <Icon name="search" />
                 {choosingDirectory ? '正在选择…' : '发现本地任务'}
@@ -382,7 +441,7 @@ export function App() {
               <button
                 className="button"
                 onClick={importCodex}
-                disabled={!hello || importing || choosingDirectory || scanning || reconnecting}
+                disabled={!hello || busy || scanning}
               >
                 <Icon name="folder" />
                 {importing ? '正在导入…' : '导入 Codex 记录'}
@@ -390,7 +449,7 @@ export function App() {
               <button
                 className="button"
                 onClick={() => setRevision((n) => n + 1)}
-                disabled={loading}
+                disabled={loading || busy}
               >
                 <Icon name="refresh" />
                 刷新记录
@@ -402,7 +461,9 @@ export function App() {
             <span>
               {source === 'demo'
                 ? '当前为合成演示。可选择 Codex 文件或目录，查看本地执行记录。'
-                : '已导入快照保存在本地，重启或源文件移走后仍可浏览；手动更新会重读已登记的来源文件。'}
+                : selected?.readOnly
+                  ? '交换快照保存在本地，不会读取其中包含的来源路径；显式重新导入原始 Codex 文件后可更新。'
+                  : '已导入快照保存在本地，重启或源文件移走后仍可浏览；手动更新会重读已登记的来源文件。'}
             </span>
           </div>
           {source === 'codex' && (
@@ -417,9 +478,7 @@ export function App() {
                     <button
                       className="text-button"
                       onClick={() => void scanCodex(directory.id)}
-                      disabled={
-                        !hello || importing || choosingDirectory || scanning || reconnecting
-                      }
+                      disabled={!hello || busy || scanning}
                       aria-label={`重新发现 ${directory.path}`}
                     >
                       重新发现
@@ -427,9 +486,7 @@ export function App() {
                     <button
                       className="text-button"
                       onClick={() => void removeDirectory(directory.id)}
-                      disabled={
-                        !hello || importing || choosingDirectory || scanning || reconnecting
-                      }
+                      disabled={!hello || busy || scanning}
                       aria-label={`移除目录 ${directory.path}`}
                     >
                       移除目录
@@ -536,6 +593,7 @@ export function App() {
                     <select
                       aria-label="筛选状态"
                       value={status}
+                      disabled={busy}
                       onChange={(event) =>
                         history.update({
                           status: event.target.value as RunStatus | 'all',
@@ -556,6 +614,7 @@ export function App() {
                       aria-label="搜索任务"
                       placeholder="搜索任务或项目"
                       value={search}
+                      disabled={busy}
                       onChange={(event) =>
                         history.update({ search: event.target.value, offset: 0, runId: undefined })
                       }
@@ -597,6 +656,7 @@ export function App() {
                       key={run.id}
                       className={'run-card ' + (run.id === selected?.id ? 'selected' : '')}
                       aria-pressed={run.id === selected?.id}
+                      disabled={busy}
                       onClick={() => history.navigate({ ...history.location, runId: run.id })}
                     >
                       <div className="run-card-meta">
@@ -614,8 +674,8 @@ export function App() {
                 <nav className="page-controls run-pages" aria-label="任务分页">
                   <button
                     className="button"
-                    disabled={loading || offset === 0}
-                    onClick={() => history.update({ offset: Math.max(0, offset - 10) })}
+                    disabled={loading || busy || previousRunOffset === null}
+                    onClick={() => history.update({ offset: previousRunOffset ?? 0 })}
                   >
                     上一页任务
                   </button>
@@ -626,7 +686,7 @@ export function App() {
                   </span>
                   <button
                     className="button"
-                    disabled={loading || runs?.nextOffset == null}
+                    disabled={loading || busy || runs?.nextOffset == null}
                     onClick={() => history.update({ offset: runs?.nextOffset ?? offset })}
                   >
                     下一页任务
@@ -643,7 +703,9 @@ export function App() {
                   run={selected}
                   onUpdate={updateCodex}
                   updating={importing}
-                  updateDisabled={choosingDirectory || !!scanning || reconnecting}
+                  updateDisabled={choosingDirectory || !!scanning || reconnecting || exporting}
+                  onExport={exportRecord}
+                  exportDisabled={busy || !!scanning}
                 />
               ) : (
                 <div className="detail-empty">
@@ -664,12 +726,16 @@ function RunDetail({
   run,
   onUpdate,
   updating,
-  updateDisabled
+  updateDisabled,
+  onExport,
+  exportDisabled
 }: {
   run: Run
   onUpdate(): Promise<void>
   updating: boolean
   updateDisabled: boolean
+  onExport(format: RecordExportFormat): Promise<ExportResult | null>
+  exportDisabled: boolean
 }) {
   const [events, setEvents] = useState<RunEvent[]>([])
   const [nextOffset, setNextOffset] = useState<number | null>(null)
@@ -682,6 +748,9 @@ function RunDetail({
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
   const [previousOffsets, setPreviousOffsets] = useState<number[]>([])
+  const [exportFormat, setExportFormat] = useState<RecordExportFormat>()
+  const [exportMessage, setExportMessage] = useState('')
+  const [exportError, setExportError] = useState('')
   const filtered = eventSearch.trim() !== '' || eventKind !== 'all'
 
   useEffect(() => {
@@ -729,6 +798,23 @@ function RunDetail({
     setNextOffset(null)
   }
 
+  async function exportSnapshot(format: RecordExportFormat) {
+    setExportFormat(format)
+    setExportMessage('')
+    setExportError('')
+    try {
+      const result = await onExport(format)
+      if (result)
+        setExportMessage(
+          `已导出 ${result.format === 'json' ? 'JSON' : 'Markdown'} · ${result.eventCount} 个事件 · ${result.path}`
+        )
+    } catch (e) {
+      setExportError(errorMessage(e))
+    } finally {
+      setExportFormat(undefined)
+    }
+  }
+
   return (
     <article className="run-detail" aria-label="执行详情">
       <div className="detail-content">
@@ -741,9 +827,20 @@ function RunDetail({
           <div className="detail-subtitle">
             <Status status={run.status} />
             <span>{date(run.startedAt)}</span>
-            <span>{run.demo ? '合成演示记录' : 'Codex 本地记录'}</span>
+            <span>
+              {run.demo ? '合成演示记录' : run.readOnly ? '只读交换快照' : 'Codex 本地记录'}
+            </span>
             {!run.demo && (
-              <button className="button" onClick={onUpdate} disabled={updating || updateDisabled}>
+              <button
+                className="button"
+                onClick={onUpdate}
+                disabled={run.readOnly || updating || updateDisabled}
+                title={
+                  run.readOnly
+                    ? '交换快照未授权读取原始路径；显式导入 Codex 原始文件后可更新'
+                    : undefined
+                }
+              >
                 <Icon name="refresh" />
                 {updating ? '正在更新…' : '更新已登记记录'}
               </button>
@@ -799,6 +896,48 @@ function RunDetail({
           <p className="snapshot-completeness">
             已保存标准化事件和每条正文最多 8 KiB 的预览；未保存原始文件备份，搜索不覆盖截断部分。
           </p>
+        )}
+        {!run.demo && run.importInfo && (
+          <section className="record-export" aria-label="导出已保存快照">
+            <h3>导出已保存快照</h3>
+            <p>
+              包含当前快照的全部 {run.eventCount} 个事件，包括其他页面及筛选外的事件。JSON 可再导入
+              jeval，Markdown 便于阅读。
+            </p>
+            <p>
+              每条正文最多 8
+              KiB，截断部分未保存；不含原始文件备份、分析或标注。导出保留来源路径，分享前请检查。
+            </p>
+            <p className="export-source-path">
+              来源路径：<code>{run.importInfo.file}</code>
+            </p>
+            <div className="record-export-actions">
+              <button
+                className="button"
+                disabled={exportDisabled || !!exportFormat}
+                onClick={() => void exportSnapshot('json')}
+              >
+                {exportFormat === 'json' ? '正在导出 JSON…' : '导出 JSON'}
+              </button>
+              <button
+                className="button"
+                disabled={exportDisabled || !!exportFormat}
+                onClick={() => void exportSnapshot('markdown')}
+              >
+                {exportFormat === 'markdown' ? '正在导出 Markdown…' : '导出 Markdown'}
+              </button>
+            </div>
+            {exportMessage && (
+              <p className="export-success" role="status">
+                {exportMessage}
+              </p>
+            )}
+            {exportError && (
+              <p className="detail-error" role="alert">
+                {exportError}
+              </p>
+            )}
+          </section>
         )}
         <div className="metrics">
           <div>

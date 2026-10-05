@@ -1,6 +1,6 @@
 # M0 架构与决策
 
-更新日期：2026-10-05。本文首先描述当前代码；末节单列尚未实现的演进约束。长期目标见 [开发规划](../jeval-development-plan.md)，本轮将 SQLite 接入可恢复桌面任务库。
+更新日期：2026-10-05。本文首先描述当前代码；末节单列尚未实现的演进约束。长期目标见 [开发规划](../jeval-development-plan.md)，本轮在 SQLite 任务库之上接入单快照交换。
 
 ## 实际调用链路
 
@@ -21,6 +21,10 @@ React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC
 
 `engine/internal/storage` 管理不可变快照、当前指针、任务/事件索引、目录配置与事务迁移，已接入桌面调用链路。协议的 [persistence.go](../../engine/internal/protocol/persistence.go) 在提交后发布元数据，并将事件查询交给 SQL 分页。设计、驱动依据与限制见 [存储说明](storage-validation.md)。`discovery`、`ingest`、`sync`、`analysis` 等独立模块仍待实现。
 
+C 增加 [exchange 包](../../engine/internal/exchange/exchange.go) 负责包版本和引用校验、有界文件读取及临时文件替换，[Markdown](../../engine/internal/exchange/markdown.go) 负责普通文本报告；[交换协议](../../engine/internal/protocol/exchange.go) 从已保存当前快照导出或在提交后发布导入元数据。文件正文不经 stdio 传输，协议只传已选择路径与结果摘要，避免大快照突破帧上限。
+
+`importRecord()` 无路径参数，`exportRecord(runId,format)` 只传 ID 和 json/markdown；主进程通过原生选择器提供路径。导出前展示完整当前快照事件数及预览/来源定位范围，取消选择返回 null。Go 拒绝写数据库、旁路文件或已登记原来源，临时文件同步后替换；失败不发布成功。导入严格校验包且不解析来源路径；SQLite 布局 v3 在 sources 保存更新授权，查询派生 readOnly，不改变快照 JSON。新交换来源只读，同版本导入保留授权；本地显式来源确认才可重新授权更新。契约见 [交换 v1](../../contracts/exchange/README.md)，本轮依据见 [M3 进度](../development/m3-progress.md)。
+
 ## 已采用的选择
 
 | 选择                              | 当前依据与影响                                                                                               |
@@ -33,7 +37,7 @@ React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC
 | 首个真实来源 Codex                | 支持 classic/paginated 子集；一份 0.160.0 记录已在本地验证，完整版本兼容矩阵尚未验收                         |
 | Windows x64 本机验证              | 目录包已运行；不据此声明安装验收或跨平台支持完成                                                             |
 
-SQLite 使用 modernc.org/sqlite v1.60.1，无 cgo；项目许可证仍待作者确定。当前来源身份使用规范化路径，快照带原始字节摘要、适配器版本与快照 ID；事件证据绑定具体版本。字段以记录契约为准，仍不承诺外部导出兼容性。
+SQLite 使用 modernc.org/sqlite v1.60.1，无 cgo；项目许可证仍待作者确定。来源身份使用规范化路径，快照带原始字节摘要、适配器版本与快照 ID；事件证据绑定具体版本。记录和 C 的单快照交换字段以 contracts 为准，仅冻结 v1 明确支持的 Codex 预览范围，不承诺未来格式自动兼容。
 
 ## 生命周期与边界
 
@@ -57,7 +61,7 @@ Codex 事件搜索在 SQL 中按已保存预览关键词和类型筛选后分页
 
 ## 下一阶段演进约束（规划，未实现）
 
-按主规划 A–D 顺序，A 已增加驱动验证与身份语义；B 已接入桌面恢复与有界分页，之后实现交换格式和检查点。当前持久化范围明确为标准化预览，完整正文与规模性能仍待完成。
+按主规划 A–D 顺序，A 已增加驱动验证与身份语义；B 已接入桌面恢复与有界分页，C 已提供单快照交换，之后实现 D 检查点。当前持久化范围明确为标准化预览，完整正文与规模性能仍待完成。
 
 - Electron 主进程提供受控的应用数据目录，Go 负责数据库与快照写入、版本迁移和恢复。数据库文件不放在安装目录，渲染层继续不接收任意文件系统权限。
 - 区分来源身份、快照版本和事件引用。当前路径哈希加物理行号不足以独立定位历史内容；同路径替换不得让旧标注或分析悄悄指向新事件。正式字段同步修改 `contracts/` 与两端类型。

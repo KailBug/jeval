@@ -1,11 +1,13 @@
 package model
 
 type Run struct {
-	ID         string      `json:"id"`
-	Title      string      `json:"title"`
-	Project    string      `json:"project"`
-	Source     string      `json:"source"`
-	Demo       bool        `json:"demo"`
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Project string `json:"project"`
+	Source  string `json:"source"`
+	Demo    bool   `json:"demo"`
+	// ReadOnly is derived library metadata, not part of an immutable snapshot.
+	ReadOnly   bool        `json:"readOnly,omitempty"`
 	Status     string      `json:"status"`
 	StartedAt  *string     `json:"startedAt"`
 	DurationMs *int64      `json:"durationMs"`

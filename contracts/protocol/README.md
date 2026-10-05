@@ -22,13 +22,20 @@
     "capabilities": [
       "demo",
       "runs.list",
+      "runs.get",
       "runs.events",
       "codex.import",
+      "codex.update",
       "codex.scan.start",
       "codex.scan.status",
       "codex.scan.cancel",
       "codex.scan.candidates",
-      "codex.scan.import"
+      "codex.scan.import",
+      "persistent-library",
+      "codex.directories.list",
+      "codex.directories.remove",
+      "records.export",
+      "records.import"
     ]
   }
 }
@@ -43,22 +50,24 @@
 }
 ```
 
-| 方法                       | 参数                                                 | 结果                                                                                             |
-| -------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `hello`                    | `{}`                                                 | 引擎、协议、记录版本与能力列表                                                                   |
-| `runs.list`                | `search?`, `status?`, `source?`, `offset?`, `limit?` | 匹配的运行分页；source 支持 all/demo/codex，缺省为 all                                           |
-| `runs.get`                 | `runId`                                              | 单条 `Run` 元数据；用于跨任务分页的历史/详情选择                                                 |
-| `runs.events`              | `runId`, `search?`, `kind?`, `offset?`, `limit?`     | 单条运行内筛选后的事件分页，保留原始序号与证据                                                   |
-| `codex.import`             | `path`（绝对路径）                                   | `{ run, replaced }`；持久化模式先事务提交再发布当前版本，失败保留旧快照                          |
-| `codex.update`             | `runId`                                              | `{ run, replaced }`；仅完整重读已登记 Codex 记录的来源路径，失败保留旧版本                       |
-| `codex.directories.list`   | `{}`                                                 | `{ items: { id, path }[] }`；持久化模式保存的目录配置                                            |
-| `codex.directories.remove` | `id`                                                 | `{ ok: true }`；只移除目录配置，不删除快照或原文件                                               |
-| `codex.scan.start`         | `path`（绝对目录路径）或 `directoryId`，二选一       | `ScanStatus`；有效目录在持久化模式保存配置，创建后台发现任务并立即返回 discovery/running；不导入 |
-| `codex.scan.status`        | `id`（扫描 ID）                                      | 最新 `ScanStatus`；只保留最近一次扫描                                                            |
-| `codex.scan.cancel`        | `id`（扫描 ID）                                      | `ScanStatus`；活动任务进入 cancelling，终态任务原样返回                                          |
-| `codex.scan.candidates`    | `id`, `offset?`, `limit?`                            | `Page<ScanCandidate>`；最近扫描的候选摘要，不发布记录                                            |
-| `codex.scan.import`        | `id`, `ids`（非空、无重复的候选 ID 数组）            | `ScanStatus`；验证集合与整体配额后启动所选导入，返回 import/running                              |
-| `shutdown`                 | `{}`                                                 | `{ "ok": true }`，随后退出                                                                       |
+| 方法                       | 参数                                                             | 结果                                                                                             |
+| -------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `hello`                    | `{}`                                                             | 引擎、协议、记录版本与能力列表                                                                   |
+| `runs.list`                | `search?`, `status?`, `source?`, `offset?`, `limit?`             | 匹配的运行分页；source 支持 all/demo/codex，缺省为 all                                           |
+| `runs.get`                 | `runId`                                                          | 单条 `Run` 元数据；用于跨任务分页的历史/详情选择                                                 |
+| `runs.events`              | `runId`, `search?`, `kind?`, `offset?`, `limit?`                 | 单条运行内筛选后的事件分页，保留原始序号与证据                                                   |
+| `codex.import`             | `path`（绝对路径）                                               | `{ run, replaced }`；持久化模式先事务提交再发布当前版本，失败保留旧快照                          |
+| `codex.update`             | `runId`                                                          | `{ run, replaced }`；仅完整重读已登记 Codex 记录的来源路径，失败保留旧版本                       |
+| `records.export`           | `runId`, `path`（保存选择器绝对路径）, `format`（json/markdown） | `{ path, format, snapshotId, eventCount }`；持久化模式导出完整当前快照，文件写入成功才返回       |
+| `records.import`           | `path`（打开选择器绝对路径）                                     | `{ run, replaced }`；持久化模式严格校验原生 JSON 并提交；新来源只读、同版本幂等                  |
+| `codex.directories.list`   | `{}`                                                             | `{ items: { id, path }[] }`；持久化模式保存的目录配置                                            |
+| `codex.directories.remove` | `id`                                                             | `{ ok: true }`；只移除目录配置，不删除快照或原文件                                               |
+| `codex.scan.start`         | `path`（绝对目录路径）或 `directoryId`，二选一                   | `ScanStatus`；有效目录在持久化模式保存配置，创建后台发现任务并立即返回 discovery/running；不导入 |
+| `codex.scan.status`        | `id`（扫描 ID）                                                  | 最新 `ScanStatus`；只保留最近一次扫描                                                            |
+| `codex.scan.cancel`        | `id`（扫描 ID）                                                  | `ScanStatus`；活动任务进入 cancelling，终态任务原样返回                                          |
+| `codex.scan.candidates`    | `id`, `offset?`, `limit?`                                        | `Page<ScanCandidate>`；最近扫描的候选摘要，不发布记录                                            |
+| `codex.scan.import`        | `id`, `ids`（非空、无重复的候选 ID 数组）                        | `ScanStatus`；验证集合与整体配额后启动所选导入，返回 import/running                              |
+| `shutdown`                 | `{}`                                                             | `{ "ok": true }`，随后退出                                                                       |
 
 分页返回 `{ items, total, nextOffset }`。`offset` 从 0 开始，最大 10 亿；默认 `limit=50`，范围 1–100。页内元素的 JSON 编码预算为 512 KiB，必要时提前结束该页；调用方必须使用 nextOffset，不能把请求 limit 当作实际返回数。到达末页时 `nextOffset=null`，空结果 `items=[]`。搜索匹配标题、项目和来源，忽略英文大小写。状态支持 `all`、`completed`、`failed`、`unknown`。
 
@@ -77,5 +86,11 @@
 桌面请求默认超时 5 秒，单文件导入/手动更新为 30 秒，最多 128 个未完成请求。文件/目录选择与重启互斥，活动扫描期间拒绝新的导入/扫描/更新，但可重启引擎取消任务。超时不是取消；不自动重放导入或扫描启动。状态默认 300ms 轮询，失败后 1500ms 重试；错误可见且保留最后已知状态。连接损坏、子进程退出或输入管道错误时拒绝所有等待中的请求；界面提供显式重启。引擎重启恢复已提交快照和目录配置，清除扫描候选，界面保留当前选择；应用退出清除内存浏览历史。关闭时发送 shutdown，最多等候 1.5 秒后终止子进程。
 
 Electron 渲染层业务方法以 [DesktopAPI](../index.ts) 为准，另暴露只读 platform 字符串，不提供任意 IPC、路径访问或执行命令能力。`importCodex()` 无路径参数；`scanCodex()` 无参数时由主进程选择器提供路径，或仅提交保存的目录 ID；取消选择返回 null。`updateCodex` 只提交已登记运行 ID。候选/导入/状态/取消仅接受主进程持有的扫描 ID，候选集合由 Go 再校验。主进程检查调用窗口与顶层 frame URL，启用 context isolation、sandbox 和 CSP，拒绝新窗口与页面跳转。依据：[Electron 安全指南](https://www.electronjs.org/docs/latest/tutorial/security)、[electron-vite 构建文档](https://electron-vite.org/guide/build)。
+
+C 的 records.import / records.export 仅在持久化模式提供并列入 hello 能力。原生格式和上限见 [交换 v1](../exchange/README.md)，大包正文通过文件读取/写入而非协议帧传输。导出不接受事件筛选，快照版本与全部事件来自同一次当前快照读取，不访问原来源。路径参数由桌面主进程选择器取得，渲染层仅调用 importRecord() 或 exportRecord(runId,format)，取消返回 null；30 秒请求超时不取消底层读写，也不自动重放。
+
+新交换来源返回派生 readOnly=true，重启保留；该字段不是快照内容，导出不包含。包内 file/location 只用于来源证据，不授权 codex.update。相同当前快照导入保留既有授权，同来源不同当前快照返回 RECORD_CONFLICT，失败保留当前库。本地 Codex 选择器或确认扫描重新导入才能恢复来源更新；只读来源的更新请求在读取前拒绝。
+
+交换错误包括 IMPORT_FAILED（包读取/版本/引用/保存失败）、RECORD_CONFLICT（同来源已有不同当前版本）、EXPORT_FAILED（目标保护、编码或文件写入失败），参数、未找到与配额错误沿用 INVALID_PARAMS / NOT_FOUND / IMPORT_LIMIT。输出先临时写入并同步，再替换目标；失败清理，不先截断原文件。数据库/旁路文件与已登记来源受保护，链接/特殊目标拒绝；选择器取消在发送请求前发生，尚无写入过程中的取消协议。
 
 桌面由主进程提供应用数据目录下的 `library.sqlite`，以 `--database ABSOLUTE_FILE` 启动引擎；握手增加 `persistent-library` 及目录方法能力。启动迁移或恢复失败会退出并报错，不回退空内存库，也不删除数据库。无参数独立引擎保留内存模式用于协议测试，此模式退出清空且不提供目录持久化。两者都提供 runs.get / codex.update，演示仍来自 embed，不写数据库。记录契约版本与 SQLite 布局版本独立，详见 [存储说明](../../docs/architecture/storage-validation.md)。

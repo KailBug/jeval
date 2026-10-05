@@ -1,5 +1,8 @@
 export const PROTOCOL_VERSION = 1 as const
 export const RECORD_VERSION = 1 as const
+export const NATIVE_RECORD_FORMAT = 'jeval-record' as const
+export const NATIVE_RECORD_FORMAT_VERSION = 1 as const
+export const PREVIEW_MAX_CONTENT_BYTES = 8192 as const
 
 export type RunStatus = 'completed' | 'failed' | 'unknown'
 export type EventKind =
@@ -21,6 +24,8 @@ export interface Run {
   project: string
   source: string
   demo: boolean
+  // Served library metadata only; native envelopes omit the attachment state.
+  readOnly?: boolean
   status: RunStatus
   startedAt: string | null
   durationMs: number | null
@@ -43,6 +48,25 @@ export interface Run {
 export interface ImportResult {
   run: Run
   replaced: boolean
+}
+export type RecordExportFormat = 'json' | 'markdown'
+export interface ExportResult {
+  path: string
+  format: RecordExportFormat
+  snapshotId: string
+  eventCount: number
+}
+export interface NativeRecordEnvelope {
+  format: typeof NATIVE_RECORD_FORMAT
+  formatVersion: typeof NATIVE_RECORD_FORMAT_VERSION
+  contentScope: 'normalized-preview'
+  maxContentBytes: typeof PREVIEW_MAX_CONTENT_BYTES
+  sourceFilesIncluded: false
+  record: {
+    schemaVersion: typeof RECORD_VERSION
+    runs: Omit<Run, 'readOnly'>[]
+    events: RunEvent[]
+  }
 }
 export interface CodexDirectory {
   id: string
@@ -116,6 +140,8 @@ export interface EventQuery {
 export interface DesktopAPI {
   readonly platform: string
   importCodex(): Promise<ImportResult | null>
+  importRecord(): Promise<ImportResult | null>
+  exportRecord(runId: string, format: RecordExportFormat): Promise<ExportResult | null>
   updateCodex(runId: string): Promise<ImportResult>
   scanCodex(directoryId?: string): Promise<ScanStatus | null>
   listCodexDirectories(): Promise<{ items: CodexDirectory[] }>

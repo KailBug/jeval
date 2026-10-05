@@ -1,0 +1,77 @@
+{
+  "format": "jeval-record",
+  "formatVersion": 1,
+  "contentScope": "normalized-preview",
+  "maxContentBytes": 8192,
+  "sourceFilesIncluded": false,
+  "record": {
+    "schemaVersion": 1,
+    "runs": [
+      {
+        "id": "codex-1111111111111111111111111111111111111111111111111111111111111111",
+        "title": "Synthetic exchange fixture",
+        "project": "Synthetic project",
+        "source": "Codex",
+        "demo": false,
+        "status": "unknown",
+        "startedAt": null,
+        "durationMs": null,
+        "tokens": null,
+        "eventCount": 2,
+        "importInfo": {
+          "adapterVersion": "codex-rollout-v1",
+          "snapshotId": "snapshot-538305ee1591c5ed46cab8884cefbccca7f55c0bb3e45adda2dc3004833117c4",
+          "file": "C:\\synthetic\\exchange fixture.jsonl",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "sessionId": "synthetic-exchange-session",
+          "cliVersion": "synthetic",
+          "historyMode": "paginated",
+          "parentThreadId": "synthetic-parent-thread",
+          "warningCount": 1,
+          "warnings": [
+            {
+              "line": 3,
+              "message": "Synthetic preview truncation notice"
+            }
+          ]
+        }
+      }
+    ],
+    "events": [
+      {
+        "id": "codex-1111111111111111111111111111111111111111111111111111111111111111:2",
+        "runId": "codex-1111111111111111111111111111111111111111111111111111111111111111",
+        "sequence": 1,
+        "kind": "tool_call",
+        "role": "assistant",
+        "title": "Synthetic tool",
+        "content": "Synthetic ordinary text\n```\n<script>synthetic fence injection</script>\n中文 preview",
+        "timestamp": null,
+        "parentId": null,
+        "evidence": {
+          "snapshotId": "snapshot-538305ee1591c5ed46cab8884cefbccca7f55c0bb3e45adda2dc3004833117c4",
+          "sourceId": "codex-1111111111111111111111111111111111111111111111111111111111111111",
+          "location": "C:\\synthetic\\exchange fixture.jsonl",
+          "line": 2
+        }
+      },
+      {
+        "id": "codex-1111111111111111111111111111111111111111111111111111111111111111:3",
+        "runId": "codex-1111111111111111111111111111111111111111111111111111111111111111",
+        "sequence": 2,
+        "kind": "tool_result",
+        "role": "tool",
+        "title": "Synthetic result",
+        "content": "Synthetic retained preview\n[内容预览已截断，请按来源行号查看原文件]",
+        "timestamp": "2026-10-05T08:00:00+08:00",
+        "parentId": "codex-1111111111111111111111111111111111111111111111111111111111111111:2",
+        "evidence": {
+          "snapshotId": "snapshot-538305ee1591c5ed46cab8884cefbccca7f55c0bb3e45adda2dc3004833117c4",
+          "sourceId": "codex-1111111111111111111111111111111111111111111111111111111111111111",
+          "location": "C:\\synthetic\\exchange fixture.jsonl",
+          "line": 3
+        }
+      }
+    ]
+  }
+}
