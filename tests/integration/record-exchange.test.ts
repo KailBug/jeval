@@ -32,6 +32,9 @@ async function allEvents(client: EngineClient, runId: string): Promise<RunEvent[
 test('native snapshots round-trip through a blank library without original files', async () => {
   const directory = await mkdtemp(resolve(tmpdir(), 'jeval-exchange-中文 '))
   const source = resolve(directory, 'source.jsonl')
+  // Windows accepts case aliases; the adapter saves the canonical locator,
+  // which can also differ from hosted runners' short TEMP directory spelling.
+  const selectedSource = process.platform === 'win32' ? source.toUpperCase() : source
   const fromDatabase = resolve(directory, 'from.sqlite')
   const toDatabase = resolve(directory, 'to.sqlite')
   const jsonPath = resolve(directory, '记录.jeval.json')
@@ -55,7 +58,9 @@ test('native snapshots round-trip through a blank library without original files
     const hello = await from.start()
     assert.ok(hello.capabilities.includes('records.export'))
     assert.ok(hello.capabilities.includes('records.import'))
-    const imported = await from.request<ImportResult>('codex.import', { path: source })
+    const imported = await from.request<ImportResult>('codex.import', { path: selectedSource })
+    const savedSource = imported.run.importInfo!.file
+    if (process.platform === 'win32') assert.notEqual(savedSource, selectedSource)
     const before = await allEvents(from, imported.run.id)
     assert.ok(before.length > 100)
     assert.ok(before.some((event) => event.parentId !== null))
@@ -93,7 +98,7 @@ test('native snapshots round-trip through a blank library without original files
     })
     const markdown = await readFile(markdownPath, 'utf8')
     assert.ok(markdown.includes(imported.run.importInfo!.snapshotId))
-    assert.ok(markdown.includes(source))
+    assert.ok(markdown.includes(`Original locator: ${savedSource}\n`))
     assert.ok(markdown.includes(before[before.length - 1].id))
     assert.ok(markdown.includes('内容预览已截断'))
     await to.start()
@@ -171,7 +176,7 @@ test('export protects source and database files and leaves no failed artifacts',
       }),
       /EXPORT_FAILED/
     )
-    assert.ok(!(await readdir(directory)).some((name) => name.includes('.tmp')))
+    assert.ok(!(await readdir(directory)).some((name) => name.startsWith('.jeval-export-')))
     assert.equal((await client.request<Run>('runs.get', { runId: run.id })).id, run.id)
     // Invalid IDs/formats fail before touching an existing destination.
     const untouched = resolve(directory, 'untouched.txt')

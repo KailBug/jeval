@@ -131,6 +131,7 @@ test('native record export/import preserves full saved preview offline without a
   await mkdir(resolve('.local'), { recursive: true })
   const directory = await mkdtemp(resolve('.local', 'e2e-exchange-'))
   const sourceFile = resolve(directory, 'synthetic-source.jsonl')
+  const selectedSource = process.platform === 'win32' ? sourceFile.toUpperCase() : sourceFile
   const jsonFile = resolve(directory, 'round-trip.jeval.json')
   const markdownFile = resolve(directory, 'round-trip.md')
   const cancelledFile = resolve(directory, 'cancelled-export.jeval.json')
@@ -188,7 +189,7 @@ test('native record export/import preserves full saved preview offline without a
     await expect(page.getByText('本地引擎已连接')).toBeVisible()
     await application.evaluate(({ dialog }, path) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] })
-    }, sourceFile)
+    }, selectedSource)
     await page.getByRole('button', { name: '导入 Codex 记录', exact: true }).click()
     let detail = page.getByRole('article', { name: '执行详情' })
     await expect(
@@ -201,11 +202,13 @@ test('native record export/import preserves full saved preview offline without a
     await expect(detail.locator('.event')).toHaveCount(1)
     const original = (await page.evaluate(() => window.jeval.listRuns({ source: 'codex' })))
       .items[0]
+    const savedSource = original.importInfo!.file
+    if (process.platform === 'win32') expect(savedSource).not.toBe(selectedSource)
     expect(original.eventCount).toBe(120)
     await expect(detail.getByRole('region', { name: '导出已保存快照' })).toContainText(
       '全部 120 个事件'
     )
-    await expect(detail.getByRole('region', { name: '导出已保存快照' })).toContainText(sourceFile)
+    await expect(detail.getByRole('region', { name: '导出已保存快照' })).toContainText(savedSource)
     await application.evaluate(({ dialog }, path) => {
       dialog.showSaveDialog = async (_window, options) => {
         if (!options.defaultPath?.endsWith('.jeval.json'))
@@ -240,7 +243,7 @@ test('native record export/import preserves full saved preview offline without a
     await expect(detail.locator('.export-success')).toContainText('已导出 Markdown · 120 个事件')
     const markdown = await readFile(markdownFile, 'utf8')
     expect(markdown).toContain('交换事件 119')
-    expect(markdown).toContain(sourceFile)
+    expect(markdown).toContain(`Original locator: ${savedSource}\n`)
     expect(markdown).toContain('unknown (null)')
     expect(markdown).toContain('normalized-preview')
     expect(markdown).toContain('8192')
@@ -329,7 +332,7 @@ test('native record export/import preserves full saved preview offline without a
     await detail.getByLabel('搜索记录内容').fill('交换事件 119')
     await expect(detail.locator('.event')).toHaveCount(1)
     await detail.getByRole('button', { name: '查看来源证据', exact: true }).click()
-    await expect(detail.locator('.evidence-panel')).toContainText(`${sourceFile} : 121`)
+    await expect(detail.locator('.evidence-panel')).toContainText(`${savedSource} : 121`)
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].setSize(1000, 760)
     )
