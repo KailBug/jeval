@@ -1,6 +1,6 @@
 # Codex 适配器
 
-更新日期：2026-10-04。状态：**classic / paginated rollout JSONL 导入已实现；一份 Codex 0.160.0 真实文件已在本地通过复测，完整版本兼容矩阵未验收**。
+更新日期：2026-10-05（规划补充）。状态：**classic / paginated rollout JSONL 导入已实现；2026-10-04 一份 Codex 0.160.0 真实文件已在本地通过复测，完整版本兼容矩阵未验收**。下文既有检查均为历史记录，本次未重跑适配器测试或重新核对上游格式。
 
 点击“导入 Codex 记录”选择一个 `.jsonl` 文件，或点击“发现本地任务”选择一个目录。单文件直接导入；目录扫描完成后弹出候选选择窗口，默认不勾选，确认导入后才更新任务库并切换到 Codex 来源。不会自动扫描用户目录，不需要 API key，也不会发送日志到远程服务。
 
@@ -26,19 +26,19 @@
 
 仓库中的 [classic.jsonl](../../fixtures/adapters/codex/classic.jsonl) 和 [paginated.jsonl](../../fixtures/adapters/codex/paginated.jsonl) 完全由人工构造，synthetic 版本字段不是 Codex 发布版本。本轮按用户指定路径只读检查了一份真实 0.160.0 文件，但没有把私人内容、绝对路径、会话 ID 或截图加入仓库；尚无获准公开的真实脱敏样本集。
 
-| 输入 | 转换与边界 |
-| --- | --- |
-| `session_meta` | 保留会话 ID、cwd、cli_version、history_mode、forked_from_id、parent_thread_id；父线程与分支来源分别展示，不混为一谈 |
-| `response_item.message` | 展示 user/assistant/system/developer 文本；其他内容块显示占位，不加载图片或附件 |
-| `function_call` / `custom_tool_call` | 工具名与参数/输入；保留 call_id 关联，重复 call_id 拒绝导入 |
-| 对应的 `*_output` | 展示结果原文或 JSON，按 call_id 指向父调用；找不到调用时给出提示 |
-| `event_msg.task_started/task_complete/turn_aborted` | 展示为回合状态事件；不据此判定整个会话成功、失败或仍在运行 |
-| `event_msg.error` | 展示来源错误，不将单个工具/回合错误推广为会话失败 |
-| `event_msg.user_message/agent_message` | 忽略镜像消息，避免与 response_item 重复；仅含镜像的格式不在完整兼容范围内 |
-| `event_msg.item_completed` | 支持 UserMessage/AgentMessage，识别 text/Text 内容；优先保留 canonical response_item，按 ID 或同回合的角色/文本摘要去重，只有投影时保留该消息 |
-| `turn_context`、`event_msg.token_count`、`token_usage_record` | 暂不展示或计算；耗时、token 为 null，会话状态为 unknown |
-| `world_state`、`thread_settings_applied`、reasoning / Reasoning | 已知的环境、设置与内部推理记录，不作为可见时间线事件，不重复产生未知类型提示 |
-| 未知类型、无效行与尾部半行 | 跳过并登记物理行号，不停止处理后续合法行 |
+| 输入                                                            | 转换与边界                                                                                                                                    |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session_meta`                                                  | 保留会话 ID、cwd、cli_version、history_mode、forked_from_id、parent_thread_id；父线程与分支来源分别展示，不混为一谈                           |
+| `response_item.message`                                         | 展示 user/assistant/system/developer 文本；其他内容块显示占位，不加载图片或附件                                                               |
+| `function_call` / `custom_tool_call`                            | 工具名与参数/输入；保留 call_id 关联，重复 call_id 拒绝导入                                                                                   |
+| 对应的 `*_output`                                               | 展示结果原文或 JSON，按 call_id 指向父调用；找不到调用时给出提示                                                                              |
+| `event_msg.task_started/task_complete/turn_aborted`             | 展示为回合状态事件；不据此判定整个会话成功、失败或仍在运行                                                                                    |
+| `event_msg.error`                                               | 展示来源错误，不将单个工具/回合错误推广为会话失败                                                                                             |
+| `event_msg.user_message/agent_message`                          | 忽略镜像消息，避免与 response_item 重复；仅含镜像的格式不在完整兼容范围内                                                                     |
+| `event_msg.item_completed`                                      | 支持 UserMessage/AgentMessage，识别 text/Text 内容；优先保留 canonical response_item，按 ID 或同回合的角色/文本摘要去重，只有投影时保留该消息 |
+| `turn_context`、`event_msg.token_count`、`token_usage_record`   | 暂不展示或计算；耗时、token 为 null，会话状态为 unknown                                                                                       |
+| `world_state`、`thread_settings_applied`、reasoning / Reasoning | 已知的环境、设置与内部推理记录，不作为可见时间线事件，不重复产生未知类型提示                                                                  |
+| 未知类型、无效行与尾部半行                                      | 跳过并登记物理行号，不停止处理后续合法行                                                                                                      |
 
 ## 身份、证据与重复导入
 
@@ -62,3 +62,17 @@ Go 测试覆盖映射、镜像去重、工具关联、来源字节不变、中�
 本轮增加 paginated 回归：镜像先后顺序、跨回合同文消息保留、缺少 canonical 的消息回退、父线程来源和工具关联。用户指定的 0.160.0 文件已在开发构建及最终目录包中复测：107 个事件、55 条消息、3 页查询，来源文件字节摘要不变；12 项提示均为 8 KiB 正文预览截断，不是解析失败。Electron 实际导入和 Windows 原生窗口控制覆盖层可见性检查通过，私人内容未进入测试产物。
 
 上述真实检查只覆盖一份消息/回合记录，不能推广为所有 0.160.0 功能均兼容。本轮目录扫描只用合成目录检查递归、中文/空格路径、坏文件隔离、重扫更新、取消、内存配额、候选文件/深度限制与 Windows junction 跳过。未重新读取私人会话；仍需真实目录、公开脱敏样本和发布版本矩阵、复杂工具投影、长日志性能、系统选择器人工验收，以及持久化/增量同步。整体状态见 [M0 进度](../development/m0-progress.md)，字段以 [记录草案](../../contracts/record/README.md) 为准。
+
+## 后续验收顺序（尚未完成）
+
+Codex 是 v0.1 Alpha 唯一必交来源，先完成以下证据与恢复链路，再扩展来源。A–D 对应 [主规划](../jeval-development-plan.md) 的执行切片。
+
+| 顺序                | 工作与验收证据                                                                                                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A：兼容矩阵         | 每份获准样本记录来源版本、history_mode、普通/长会话/工具失败/分支/未完成场景、预期映射、实际缺失与验证环境；允许同一文件覆盖多种场景。仅公开获准的脱敏样本，合成补充不替代真实兼容依据 |
+| A：真实目录         | 人工使用系统选择器完成发现、选择、取消与更新；检查混合坏文件、权限失败、源文件不变和提示。未验证版本或复杂工具投影保持明确限制                                                         |
+| B：已确认数据持久化 | 保存授权目录和所选快照，退出或源文件离线仍可浏览保存内容；重扫新文件继续默认不选，更新失败保留上一份记录                                                                               |
+| C：证据往返         | 在空白任务库导入 jeval 导出包，核对快照、事件关联、未知指标及内容截断；原始路径缺失不影响包内已有证据。该入口与 Codex JSONL 导入分别定义                                               |
+| D：检查点与恢复     | 验证追加半行补全、重扫去重、截断/轮转/替换、取消与崩溃恢复；追加 canonical 消息后可修正旧投影，结果与完整重读基线一致                                                                  |
+
+默认目录建议必须先展示范围并经选择；保存目录不启用自动导入。文件监听后置为更新触发手段。当前文件、事件和预览上限保持有效，扩容需配合持久化、正文读取和 UI 性能验收，不能直接删掉限制。
