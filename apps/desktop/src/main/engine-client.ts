@@ -18,12 +18,13 @@ export class EngineClient {
 
   constructor(
     private executable: string,
-    private timeoutMs = 5000
+    private timeoutMs = 5000,
+    private args: string[] = []
   ) {}
 
   async start(): Promise<Hello> {
     if (this.child) throw new Error('引擎已经启动')
-    const child = spawn(this.executable, [], { windowsHide: true, stdio: 'pipe' })
+    const child = spawn(this.executable, this.args, { windowsHide: true, stdio: 'pipe' })
     this.child = child
     child.stdout.setEncoding('utf8')
     child.stdout.on('data', (chunk: string) => this.consume(chunk))

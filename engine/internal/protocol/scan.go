@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -67,6 +68,7 @@ type scanService struct {
 	cancel     context.CancelFunc
 	done       chan struct{}
 	candidates []ScanCandidate
+	store      libraryStore
 }
 
 func (s *scanService) snapshot() ScanStatus {
@@ -87,19 +89,75 @@ func (s *scanService) dispatch(req Request) Response {
 	}
 	res := Response{Type: "response", Version: Version, ID: req.ID}
 	switch req.Method {
+	case "hello":
+		res.Result = hello(s.store != nil)
+		return res
+	case "runs.events":
+		if s.store != nil {
+			return s.persistedEvents(req)
+		}
+	case "codex.directories.list", "codex.directories.remove":
+		return s.directories(req)
 	case "codex.scan.start":
 		if s.active() {
 			return failure(req.ID, "SCAN_BUSY", "请等待当前扫描完成或取消扫描")
 		}
 		var params struct {
-			Path string `json:"path"`
+			Path        *string `json:"path"`
+			DirectoryID *string `json:"directoryId"`
 		}
-		if json.Unmarshal(req.Params, &params) != nil || !filepath.IsAbs(params.Path) || len(params.Path) > 2048 {
+		if json.Unmarshal(req.Params, &params) != nil || (params.Path == nil) == (params.DirectoryID == nil) {
+			return failure(req.ID, "INVALID_PARAMS", "请选择目录路径或已保存目录 ID，不能同时提供")
+		}
+		path := ""
+		if params.DirectoryID != nil {
+			if s.store == nil {
+				return failure(req.ID, "INVALID_PARAMS", "已保存目录需要持久化任务库")
+			}
+			if *params.DirectoryID == "" || len(*params.DirectoryID) > 128 {
+				return failure(req.ID, "INVALID_PARAMS", "需要已保存目录 ID")
+			}
+			items, err := s.store.Directories(context.Background())
+			if err != nil {
+				return failure(req.ID, "STORAGE_FAILED", err.Error())
+			}
+			for _, directory := range items {
+				if directory.ID == *params.DirectoryID {
+					path = directory.Path
+					break
+				}
+			}
+			if path == "" {
+				return failure(req.ID, "NOT_FOUND", "已保存目录不存在")
+			}
+		} else {
+			path = *params.Path
+		}
+		if !filepath.IsAbs(path) || len(path) > 2048 {
 			return failure(req.ID, "INVALID_PARAMS", "请选择绝对路径下的目录（最多 2048 字节）")
 		}
-		root, err := filepath.EvalSymlinks(params.Path)
+		root, err := filepath.EvalSymlinks(path)
 		if err != nil || len(root) > 2048 {
 			return failure(req.ID, "SCAN_FAILED", "无法读取所选目录")
+		}
+		if params.DirectoryID != nil {
+			// Windows junctions are ModeIrregular rather than ModeSymlink and
+			// EvalSymlinks may leave their path unchanged. A persisted root that
+			// becomes a link must be selected explicitly again before following it.
+			rootInfo, statErr := os.Lstat(path)
+			if statErr != nil {
+				return failure(req.ID, "SCAN_FAILED", "无法读取所选目录")
+			}
+			if rootInfo.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+				return failure(req.ID, "SCAN_FAILED", "保存的目录路径身份发生变化，请重新选择目录")
+			}
+			previous, resolved := filepath.Clean(path), filepath.Clean(root)
+			if runtime.GOOS == "windows" {
+				previous, resolved = strings.ToLower(previous), strings.ToLower(resolved)
+			}
+			if previous != resolved {
+				return failure(req.ID, "SCAN_FAILED", "保存的目录路径身份发生变化，请重新选择目录")
+			}
 		}
 		info, err := os.Stat(root)
 		if err != nil || !info.IsDir() {
@@ -108,6 +166,11 @@ func (s *scanService) dispatch(req Request) Response {
 		var id [16]byte
 		if _, err := rand.Read(id[:]); err != nil {
 			return failure(req.ID, "SCAN_FAILED", "无法创建扫描 ID")
+		}
+		if s.store != nil && params.Path != nil {
+			if _, err := s.store.SaveDirectory(context.Background(), root); err != nil {
+				return failure(req.ID, "STORAGE_FAILED", "保存来源目录失败: "+err.Error())
+			}
 		}
 		s.scan = &ScanStatus{ID: fmt.Sprintf("%x", id), Root: root, State: "running", Phase: "discovery", Issues: []ScanIssue{}, Message: "正在发现记录，尚未导入"}
 		s.candidates = nil
@@ -190,7 +253,7 @@ func (s *scanService) dispatch(req Request) Response {
 				events += s.candidates[index].EventCount
 			}
 			if files > 20 || events > 50000 {
-				return failure(req.ID, "IMPORT_LIMIT", "所选记录超出本次启动 20 个文件或 50000 个事件的上限，请减少选择；本次未导入任何记录")
+				return failure(req.ID, "IMPORT_LIMIT", "所选记录超出任务库 20 个文件或 50000 个事件的上限，请减少选择；本次未导入任何记录")
 			}
 			s.scan.Phase, s.scan.State, s.scan.Message = "import", "running", "正在导入所选记录"
 			s.scan.Imported, s.scan.Updated, s.scan.Failed = 0, 0, 0
@@ -208,10 +271,11 @@ func (s *scanService) dispatch(req Request) Response {
 		}
 		res.Result = s.snapshot()
 		return res
-	case "codex.import":
+	case "codex.import", "codex.update":
 		if s.active() {
 			return failure(req.ID, "SCAN_BUSY", "请等待当前扫描完成或取消扫描")
 		}
+		return s.importRun(req)
 	case "shutdown":
 		if s.active() {
 			s.cancel()
@@ -391,11 +455,15 @@ func (s *scanService) importSelected(ctx context.Context, selection []int, done 
 		}
 		replaced := false
 		if err == nil {
-			replaced, err = replaceRun(&s.record, run, events)
+			replaced, err = s.publishRun(ctx, run, events)
 		}
 		if err != nil {
 			s.issue(candidate.Path, err)
-			s.candidates[index].Error = s.scan.Issues[len(s.scan.Issues)-1].Message
+			runes := []rune(err.Error())
+			if len(runes) > 512 {
+				runes = append(runes[:512], '…')
+			}
+			s.candidates[index].Error = string(runes)
 		} else {
 			s.candidates[index].Imported, s.candidates[index].Error = true, ""
 			if replaced {

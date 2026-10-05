@@ -3,11 +3,12 @@ package protocol
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"jeval/engine/internal/adapters/codex"
 	"jeval/engine/internal/model"
+	"jeval/engine/internal/storage"
 	"strings"
 )
 
@@ -92,24 +93,26 @@ func dispatchRecord(req Request, record *model.Record) Response {
 	res := Response{Type: "response", Version: Version, ID: req.ID}
 	switch req.Method {
 	case "hello":
-		res.Result = map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": []string{"demo", "runs.list", "runs.events", "codex.import", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}}
+		res.Result = hello(false)
 		return res
-	case "codex.import":
+	case "runs.get":
 		var params struct {
-			Path string `json:"path"`
+			RunID string `json:"runId"`
 		}
-		if json.Unmarshal(req.Params, &params) != nil || params.Path == "" {
-			return failure(req.ID, "INVALID_PARAMS", "Expected a selected file path")
+		if json.Unmarshal(req.Params, &params) != nil || params.RunID == "" || len(params.RunID) > 128 {
+			return failure(req.ID, "INVALID_PARAMS", "Expected a run ID (max 128 bytes)")
 		}
-		run, events, err := codex.Read(params.Path)
-		if err != nil {
-			return failure(req.ID, "IMPORT_FAILED", err.Error())
+		for _, run := range record.Runs {
+			if run.ID == params.RunID {
+				res.Result = run
+				return res
+			}
 		}
-		replaced, err := replaceRun(record, run, events)
-		if err != nil {
-			return failure(req.ID, "IMPORT_LIMIT", err.Error())
-		}
-		res.Result = map[string]any{"run": run, "replaced": replaced}
+		return failure(req.ID, "NOT_FOUND", "Run not found")
+	case "codex.import", "codex.update":
+		service := &scanService{record: *record}
+		res := service.importRun(req)
+		*record = service.record
 		return res
 	case "shutdown":
 		res.Result = map[string]bool{"ok": true}
@@ -185,6 +188,24 @@ func dispatchRecord(req Request, record *model.Record) Response {
 // connection; malformed JSON returns an error and leaves subsequent requests usable.
 func Serve(input io.Reader, output io.Writer, record model.Record) error {
 	service := &scanService{record: record}
+	return serve(input, output, service)
+}
+
+// ServeWithStore restores current run metadata only. Event pages come from the
+// database; opening a library never reads or scans the original source files.
+// The caller owns the store and must close it after ServeWithStore returns.
+func ServeWithStore(input io.Reader, output io.Writer, demo model.Record, store *storage.Store) error {
+	if store == nil {
+		return fmt.Errorf("persistent library requires a store")
+	}
+	service, err := newPersistentService(context.Background(), demo, store)
+	if err != nil {
+		return err
+	}
+	return serve(input, output, service)
+}
+
+func serve(input io.Reader, output io.Writer, service *scanService) error {
 	defer service.close()
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 4096), MaxFrameBytes)
@@ -212,19 +233,15 @@ func Serve(input io.Reader, output io.Writer, record model.Record) error {
 }
 
 func replaceRun(record *model.Record, run model.Run, events []model.Event) (bool, error) {
-	index, imported, eventCount := -1, 0, len(events)
-	for i, old := range record.Runs {
-		if old.ID == run.ID {
-			index = i
-		} else {
-			eventCount += old.EventCount
-			if !old.Demo {
-				imported++
-			}
-		}
+	index, err := replacementIndex(record, run, len(events))
+	if err != nil {
+		return false, err
 	}
-	if imported >= 20 || eventCount > 50000 {
-		return false, fmt.Errorf("本次启动最多导入 20 个文件、50000 个事件，请重启后重新选择")
+	eventCount := len(events)
+	for _, old := range record.Runs {
+		if old.ID != run.ID {
+			eventCount += old.EventCount
+		}
 	}
 	retained := make([]model.Event, 0, eventCount)
 	for _, event := range record.Events {
@@ -239,4 +256,22 @@ func replaceRun(record *model.Record, run model.Run, events []model.Event) (bool
 		record.Runs = append(record.Runs, run)
 	}
 	return index >= 0, nil
+}
+
+func replacementIndex(record *model.Record, run model.Run, events int) (int, error) {
+	index, imported, eventCount := -1, 0, events
+	for i, old := range record.Runs {
+		if old.ID == run.ID {
+			index = i
+		} else {
+			eventCount += old.EventCount
+			if !old.Demo {
+				imported++
+			}
+		}
+	}
+	if imported >= 20 || eventCount > 50000 {
+		return -1, fmt.Errorf("任务库最多导入 20 个文件、50000 个事件，请减少导入范围")
+	}
+	return index, nil
 }

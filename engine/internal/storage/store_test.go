@@ -106,6 +106,12 @@ func TestAtomicPublishAndImmutableHistory(t *testing.T) {
 	if _, err = s.Snapshot(ctx, updated.ImportInfo.SnapshotID); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatal("failed snapshot leaked", err)
 	}
+	for _, table := range []string{"snapshot_runs", "snapshot_events"} {
+		var leaked int
+		if err = s.db.QueryRow("SELECT count(*) FROM "+table+" WHERE snapshot_id=?", updated.ImportInfo.SnapshotID).Scan(&leaked); err != nil || leaked != 0 {
+			t.Fatal("failed derived rows leaked", table, leaked, err)
+		}
+	}
 	if _, err = s.db.Exec("DROP TRIGGER fail_publish"); err != nil {
 		t.Fatal(err)
 	}

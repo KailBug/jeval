@@ -1,8 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
+import { mkdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './engine-client'
-import type { Hello, ScanStatus } from '../../../../contracts/index'
+import type { CodexDirectory, Hello, Run, ScanStatus } from '../../../../contracts/index'
 
 let engine: EngineClient
 let ready: Promise<Hello>
@@ -13,6 +14,19 @@ let importing = false
 let scanID: string | undefined
 const rendererFile = join(__dirname, '../renderer/index.html')
 const developmentURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
+// Electron's Chromium switch doesn't consistently change app.getPath('userData').
+// Use the same explicit data directory for both Chromium and the persisted library.
+const userDataArgument = process.argv.find((argument) => argument.startsWith('--user-data-dir='))
+if (userDataArgument)
+  app.setPath('userData', resolve(userDataArgument.slice('--user-data-dir='.length)))
+const primaryInstance = app.requestSingleInstanceLock()
+if (!primaryInstance) app.quit()
+else
+  app.on('second-instance', () => {
+    if (window?.isMinimized()) window.restore()
+    window?.show()
+    window?.focus()
+  })
 
 function startEngine(): Promise<Hello> {
   scanID = undefined
@@ -20,13 +34,30 @@ function startEngine(): Promise<Hello> {
   const enginePath = app.isPackaged
     ? join(process.resourcesPath, 'engine', executable)
     : join(app.getAppPath(), '../../bin', executable)
-  engine = new EngineClient(enginePath)
-  ready = engine.start()
+  const dataDirectory = app.getPath('userData')
+  engine = new EngineClient(enginePath, 5000, ['--database', join(dataDirectory, 'library.sqlite')])
+  ready = Promise.resolve().then(() => {
+    mkdirSync(dataDirectory, { recursive: true })
+    return engine.start()
+  })
   void ready.catch(() => undefined) // Retain the rejection for UI recovery without an unhandled rejection.
   return ready
 }
 
 function registerIPC(): void {
+  const requireID = (id: unknown): string => {
+    if (typeof id !== 'string' || id.length === 0 || id.length > 128 || isAbsolute(id))
+      throw new Error('无效的记录或目录 ID')
+    return id
+  }
+  const savedDirectory = async (id: unknown) => {
+    const directoryID = requireID(id)
+    await ready
+    const directories = await engine.request<{ items: CodexDirectory[] }>('codex.directories.list')
+    if (!directories.items.some((directory) => directory.id === directoryID))
+      throw new Error('保存的目录不存在')
+    return directoryID
+  }
   const scanRequest = async (method: string, id: unknown) => {
     if (typeof id !== 'string' || id !== scanID) throw new Error('扫描不存在或引擎已重启')
     await ready
@@ -39,20 +70,32 @@ function registerIPC(): void {
       throw new Error('请等待当前扫描完成或取消扫描')
   }
   const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
-    'jeval:scan-codex': async () => {
+    'jeval:codex-directories': async () => {
+      await ready
+      return engine.request('codex.directories.list')
+    },
+    'jeval:remove-codex-directory': async (id) => {
+      if (importing || restarting) throw new Error('请等待当前操作完成')
+      await ensureScanIdle()
+      return engine.request('codex.directories.remove', { id: await savedDirectory(id) })
+    },
+    'jeval:scan-codex': async (directoryId) => {
       if (!window || importing || restarting) throw new Error('请等待当前操作完成')
       importing = true
       try {
         await ready
         await ensureScanIdle()
-        const selection = await dialog.showOpenDialog(window, {
-          title: '选择 Codex 记录目录',
-          properties: ['openDirectory']
-        })
-        if (selection.canceled || !selection.filePaths[0]) return null
-        const status = await engine.request<ScanStatus>('codex.scan.start', {
-          path: selection.filePaths[0]
-        })
+        let params: { path: string } | { directoryId: string }
+        if (directoryId !== undefined) params = { directoryId: await savedDirectory(directoryId) }
+        else {
+          const selection = await dialog.showOpenDialog(window, {
+            title: '选择 Codex 记录目录',
+            properties: ['openDirectory']
+          })
+          if (selection.canceled || !selection.filePaths[0]) return null
+          params = { path: selection.filePaths[0] }
+        }
+        const status = await engine.request<ScanStatus>('codex.scan.start', params)
         scanID = status.id
         return status
       } finally {
@@ -116,6 +159,20 @@ function registerIPC(): void {
         importing = false
       }
     },
+    'jeval:update-codex': async (runId) => {
+      const id = requireID(runId)
+      if (importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        await ensureScanIdle()
+        const run = await engine.request<Run>('runs.get', { runId: id })
+        if (run.demo || !run.importInfo) throw new Error('只能更新已登记的 Codex 记录')
+        return await engine.request('codex.update', { runId: id }, 30000)
+      } finally {
+        importing = false
+      }
+    },
     'jeval:hello': async () => {
       await ready
       return engine.request('hello')
@@ -123,6 +180,11 @@ function registerIPC(): void {
     'jeval:runs': async (params) => {
       await ready
       return engine.request('runs.list', params)
+    },
+    'jeval:run': async (runId) => {
+      const id = requireID(runId)
+      await ready
+      return engine.request('runs.get', { runId: id })
     },
     'jeval:events': async (params) => {
       await ready
@@ -191,6 +253,7 @@ function createWindow(): void {
 }
 
 void app.whenReady().then(() => {
+  if (!primaryInstance) return
   app.setAppUserModelId('dev.jeval.desktop')
   void startEngine().catch(() => undefined)
   registerIPC()

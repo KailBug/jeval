@@ -316,9 +316,177 @@ test('Codex file selection supports cancel, import, replacement, warnings, and l
     await expect(page.locator('.run-card')).toHaveCount(3)
     await page.evaluate(() => window.jeval.restartEngine())
     await page.getByRole('button', { name: 'Codex 本地', exact: true }).click()
-    await expect(page.getByText('还没有 Codex 记录')).toBeVisible()
+    await expect(page.locator('.run-card')).toHaveCount(2)
+    await page.locator('.run-card').filter({ hasText: '检查示例项目的测试结果' }).click()
+    await expect(
+      detail.getByRole('heading', { name: '检查示例项目的测试结果', exact: true })
+    ).toBeVisible()
     expect(errors).toEqual([])
   } finally {
     await application.close()
+  }
+})
+
+test('persistent library restores offline snapshots and directories with bounded task/event pages', async () => {
+  test.setTimeout(60000)
+  await mkdir(resolve('.local'), { recursive: true })
+  const directory = await mkdtemp(resolve('.local', 'e2e-library-'))
+  const sources = resolve(directory, 'sources')
+  const userData = resolve(directory, 'user-data')
+  await mkdir(sources)
+  for (let index = 0; index < 12; index++) {
+    const lines = [
+      JSON.stringify({
+        timestamp: `2026-10-04T01:${String(index).padStart(2, '0')}:00Z`,
+        type: 'session_meta',
+        payload: {
+          id: `synthetic-persistent-${index}`,
+          cwd: 'D:\\synthetic-library',
+          cli_version: 'synthetic'
+        }
+      })
+    ]
+    for (let event = 0; event < 120; event++)
+      lines.push(
+        JSON.stringify({
+          type: 'response_item',
+          payload: {
+            type: 'message',
+            role: event === 0 ? 'user' : 'assistant',
+            content: `持久化任务 ${index} · 事件 ${event}`
+          }
+        })
+      )
+    await writeFile(resolve(sources, `session-${index}.jsonl`), lines.join('\n') + '\n')
+  }
+  const env = { ...process.env }
+  delete env.ELECTRON_RUN_AS_NODE
+  const packaged = process.env.JEVAL_PACKAGED_EXECUTABLE
+  const launch = () =>
+    electron.launch({
+      ...(packaged ? { executablePath: resolve(packaged) } : {}),
+      args: [...(packaged ? [] : [resolve('apps/desktop')]), `--user-data-dir=${userData}`],
+      env
+    })
+  let application = await launch()
+  try {
+    let page = await application.firstWindow()
+    await expect(page.getByText('本地引擎已连接')).toBeVisible()
+    expect(await application.evaluate(({ app }) => app.getPath('userData'))).toBe(userData)
+    await application.evaluate(({ dialog }, path) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] })
+    }, sources)
+    await page.getByRole('button', { name: '发现本地任务', exact: true }).click()
+    const picker = page.getByRole('dialog', { name: '选择要导入的记录' })
+    await expect(picker).toBeVisible()
+    await picker.getByRole('checkbox', { name: '全选记录', exact: true }).check()
+    await picker.getByRole('button', { name: '导入所选（12）', exact: true }).click()
+    await expect(picker.getByRole('button', { name: '关闭选择', exact: true })).toBeEnabled()
+    await picker.getByRole('button', { name: '关闭选择', exact: true }).click()
+    await expect(page.locator('.run-card')).toHaveCount(10)
+    await page.getByRole('button', { name: '下一页任务', exact: true }).click()
+    await expect(page.locator('.run-card')).toHaveCount(2)
+    const title = await page.locator('.run-card h3').first().innerText()
+    await page.locator('.run-card').first().click()
+    let detail = page.getByRole('article', { name: '执行详情' })
+    await expect(detail.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '上一页任务', exact: true }).click()
+    await expect(page.locator('.run-card')).toHaveCount(10)
+    await expect(detail.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    await expect(detail.locator('.event')).toHaveCount(50)
+    await detail.getByRole('button', { name: '下一页事件', exact: true }).click()
+    await expect(detail.locator('.event')).toHaveCount(50)
+    await expect(detail.getByText('#51', { exact: true })).toBeVisible()
+    await expect(detail.getByText('#01', { exact: true })).toHaveCount(0)
+    await detail.getByRole('button', { name: '下一页事件', exact: true }).click()
+    await expect(detail.locator('.event')).toHaveCount(20)
+    await detail.getByRole('button', { name: '上一页事件', exact: true }).click()
+    await expect(detail.locator('.event')).toHaveCount(50)
+    await expect(detail.getByText('#51', { exact: true })).toBeVisible()
+    await detail.getByLabel('搜索记录内容').fill('事件 119')
+    await expect(detail.locator('.event')).toHaveCount(1)
+    await expect(detail.getByText('#120', { exact: true })).toBeVisible()
+    await detail.getByRole('button', { name: '查看来源证据', exact: true }).click()
+    await expect(detail.locator('.evidence-panel')).toContainText(' : 121')
+    await expect(detail.locator('.snapshot-completeness')).toContainText('最多 8 KiB')
+    await page.locator('.directory-panel summary').click()
+    await expect(
+      page.getByRole('button', { name: `重新发现 ${sources}`, exact: true })
+    ).toBeVisible()
+    expect(
+      await page.evaluate(async (path) => {
+        try {
+          await window.jeval.scanCodex(path)
+          return 'accepted'
+        } catch (error) {
+          return String(error)
+        }
+      }, sources)
+    ).toContain('无效的记录或目录 ID')
+    await page.getByRole('button', { name: `重新发现 ${sources}`, exact: true }).click()
+    await expect(picker).toBeVisible()
+    await expect(picker.getByRole('button', { name: '导入所选（0）', exact: true })).toBeDisabled()
+    await picker.getByRole('button', { name: '关闭选择', exact: true }).click()
+    const selectedRun = await page.evaluate(async (selectedTitle) => {
+      const result = await window.jeval.listRuns({ source: 'codex', search: selectedTitle })
+      return result.items[0]
+    }, title)
+    const sourceFile = selectedRun.importInfo!.file
+    await writeFile(
+      sourceFile,
+      (await readFile(sourceFile, 'utf8')) +
+        JSON.stringify({
+          type: 'response_item',
+          payload: { type: 'message', role: 'assistant', content: '手动更新新增事件' }
+        }) +
+        '\n'
+    )
+    await application.evaluate(({ dialog }) => {
+      dialog.showOpenDialog = async () => {
+        throw new Error('registered update must not open a chooser')
+      }
+    })
+    await detail.getByRole('button', { name: '更新已登记记录', exact: true }).click()
+    await expect(page.getByText('已更新记录 · 121 个事件', { exact: true })).toBeVisible()
+    await expect(detail.locator('.event')).toHaveCount(50)
+    await page.screenshot({ path: 'test-results/persistent-library-1440.png' })
+    await application.close()
+    await rm(sources, { recursive: true, force: true })
+    application = await launch()
+    page = await application.firstWindow()
+    await expect(page.getByText('本地引擎已连接')).toBeVisible()
+    expect((await readFile(resolve(userData, 'library.sqlite'))).length).toBeGreaterThan(0)
+    await page.getByRole('button', { name: 'Codex 本地', exact: true }).click()
+    await expect(page.locator('.run-card')).toHaveCount(10)
+    expect((await page.evaluate(() => window.jeval.listRuns({ source: 'codex' }))).total).toBe(12)
+    await expect(page.getByRole('region', { name: 'Codex 目录扫描' })).toHaveCount(0)
+    await page.locator('.directory-panel summary').click()
+    await expect(
+      page.getByRole('button', { name: `重新发现 ${sources}`, exact: true })
+    ).toBeVisible()
+    detail = page.getByRole('article', { name: '执行详情' })
+    await expect(detail.locator('.event')).toHaveCount(50)
+    const restoredTitle = await detail.locator('h2').innerText()
+    await detail.getByRole('button', { name: '更新已登记记录', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText('已保存的快照保留')
+    await expect(detail.getByRole('heading', { name: restoredTitle, exact: true })).toBeVisible()
+    await expect(detail.locator('.event')).toHaveCount(50)
+    await page.getByRole('alert').getByRole('button', { name: '关闭提示' }).click()
+    await page.getByRole('button', { name: `移除目录 ${sources}`, exact: true }).click()
+    await expect(page.locator('.directory-panel summary')).toHaveText('保存的 Codex 目录 · 0')
+    expect((await page.evaluate(() => window.jeval.listRuns({ source: 'codex' }))).total).toBe(12)
+    await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setSize(1000, 760)
+    )
+    await detail.evaluate((element) => {
+      element.scrollTop = 0
+    })
+    await page.screenshot({ path: 'test-results/persistent-library-1000.png' })
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    ).toBe(true)
+  } finally {
+    await application.close()
+    await rm(directory, { recursive: true, force: true })
   }
 })
