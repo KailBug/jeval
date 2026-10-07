@@ -26,6 +26,10 @@ func checkpointSample(t *testing.T) (model.Run, []model.Event, *codex.Checkpoint
 	if err != nil {
 		t.Fatal(err)
 	}
+	// These existing fixtures exercise preview-only persistence and migration.
+	for i := range events {
+		events[i].FullContent = nil
+	}
 	return run, events, cp, path
 }
 

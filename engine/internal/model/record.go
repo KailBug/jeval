@@ -43,16 +43,18 @@ type EvidenceRef struct {
 }
 
 type Event struct {
-	ID        string      `json:"id"`
-	RunID     string      `json:"runId"`
-	Sequence  int         `json:"sequence"`
-	Kind      string      `json:"kind"`
-	Role      string      `json:"role"`
-	Title     string      `json:"title"`
-	Content   string      `json:"content"`
-	Timestamp *string     `json:"timestamp"`
-	ParentID  *string     `json:"parentId"`
-	Evidence  EvidenceRef `json:"evidence"`
+	// FullContent is an internal persistence payload, never part of preview or exchange JSON.
+	FullContent *string     `json:"-"`
+	ID          string      `json:"id"`
+	RunID       string      `json:"runId"`
+	Sequence    int         `json:"sequence"`
+	Kind        string      `json:"kind"`
+	Role        string      `json:"role"`
+	Title       string      `json:"title"`
+	Content     string      `json:"content"`
+	Timestamp   *string     `json:"timestamp"`
+	ParentID    *string     `json:"parentId"`
+	Evidence    EvidenceRef `json:"evidence"`
 }
 
 type Record struct {

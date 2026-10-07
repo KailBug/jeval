@@ -14,6 +14,8 @@ import (
 // Keeping this small interface also lets protocol tests inject disk failures at
 // the save boundary without weakening the production store's transaction rules.
 type libraryStore interface {
+	RestoreContents(context.Context, *model.Record) (bool, error)
+	EventContent(context.Context, string, string, string, int) (storage.ContentPage, error)
 	Runs(context.Context) ([]model.Run, error)
 	Events(context.Context, string, string, string, int, int) ([]model.Event, int, error)
 	Save(context.Context, model.Run, []model.Event) error
@@ -28,7 +30,7 @@ type libraryStore interface {
 func hello(persistent bool) map[string]any {
 	capabilities := []string{"demo", "runs.list", "runs.get", "runs.events", "codex.import", "codex.update", "codex.update.start", "codex.update.status", "codex.update.cancel", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}
 	if persistent {
-		capabilities = append(capabilities, "persistent-library", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
+		capabilities = append(capabilities, "persistent-library", "runs.eventContent", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
 	}
 	return map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": capabilities}
 }

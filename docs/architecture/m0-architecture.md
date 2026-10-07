@@ -21,7 +21,7 @@ React 界面调用 `window.jeval` 的业务方法，由 preload 经 Electron IPC
 
 `engine/internal/storage` 管理不可变快照、当前指针、任务/事件索引、目录配置与事务迁移，已接入桌面调用链路。协议的 [persistence.go](../../engine/internal/protocol/persistence.go) 在提交后发布元数据，并将事件查询交给 SQL 分页。设计、驱动依据与限制见 [存储说明](storage-validation.md)。`discovery`、`ingest`、`sync`、`analysis` 等独立模块仍待实现。
 
-C 增加 [exchange 包](../../engine/internal/exchange/exchange.go) 负责包版本和引用校验、有界文件读取及临时文件替换，[Markdown](../../engine/internal/exchange/markdown.go) 负责普通文本报告；[交换协议](../../engine/internal/protocol/exchange.go) 从已保存当前快照导出或在提交后发布导入元数据。文件正文不经 stdio 传输，协议只传已选择路径与结果摘要，避免大快照突破帧上限。
+C 增加 [exchange 包](../../engine/internal/exchange/exchange.go) 负责包版本和引用校验、有界文件读取及临时文件替换，[Markdown](../../engine/internal/exchange/markdown.go) 负责普通文本报告；[交换协议](../../engine/internal/protocol/exchange.go) 从已保存当前快照导出或在提交后发布导入元数据。交换文件正文不经 stdio 传输，协议只传已选择路径与结果摘要，避免大快照突破帧上限。
 
 `importRecord()` 无路径参数，`exportRecord(runId,format)` 只传 ID 和 json/markdown；主进程通过原生选择器提供路径。导出前展示完整当前快照事件数及预览/来源定位范围，取消选择返回 null。Go 拒绝写数据库、旁路文件或已登记原来源，临时文件同步后替换；失败不发布成功。导入严格校验包且不解析来源路径；SQLite 布局 v3 在 sources 保存更新授权，查询派生 readOnly，不改变快照 JSON。新交换来源只读，同版本导入保留授权；本地显式来源确认才可重新授权更新。契约见 [交换 v1](../../contracts/exchange/README.md)，本轮依据见 [M3 进度](../development/m3-progress.md)。
 
@@ -45,7 +45,7 @@ SQLite 使用 modernc.org/sqlite v1.60.1，无 cgo；项目许可证仍待作者
 
 渲染层启用 context isolation 和 sandbox，关闭 Node integration；主进程限制 IPC 调用窗口及顶层 frame URL，拒绝新窗口、导航和权限请求。执行内容按普通文本展示，内置证据引用不访问磁盘。
 
-`importCodex()` 不接受渲染层路径参数。主进程从系统文件选择器取得单个路径后交给 Go；Go 只读普通 UTF-8 JSONL 文件，完整解析、事务提交成功后才替换当前元数据。重复导入按规范化路径去重；`updateCodex(runId)` 启动已登记路径的后台检查点更新；读取/解析在服务锁外进行，查询仍可浏览旧快照。发布和取消共享锁，检查点与快照事务一致。支持 classic/paginated 子集；paginated 的完成项投影与 canonical 消息按 ID 或同回合内容去重。单文件导入最多等待 30 秒，后台更新启动/状态/取消与普通查询为 5 秒；不自动重试。重启恢复已提交快照，源文件离线仍可浏览已保存预览。大小与兼容边界见 [Codex 适配器](../adapters/codex.md)。
+`importCodex()` 不接受渲染层路径参数。主进程从系统文件选择器取得单个路径后交给 Go；Go 只读普通 UTF-8 JSONL 文件，完整解析、事务提交成功后才替换当前元数据。重复导入按规范化路径去重；`updateCodex(runId)` 启动已登记路径的后台检查点更新；读取/解析在服务锁外进行，查询仍可浏览旧快照。发布和取消共享锁，检查点与快照事务一致。支持 classic/paginated 子集；paginated 的完成项投影与 canonical 消息按 ID 或同回合内容去重。单文件导入最多等待 30 秒，后台更新启动/状态/取消与普通查询为 5 秒；不自动重试。重启恢复已提交快照，源文件离线仍可浏览预览与 D02 已保存的完整正文。大小与兼容边界见 [Codex 适配器](../adapters/codex.md)。
 
 窗口采用隐藏原生标题文字与原生窗口按钮覆盖层，渲染端只负责拖动区域和浏览历史箭头。preload 额外暴露只读 platform 字符串用于避让 macOS 控件，无新增窗口控制或通用 IPC 权限。浏览历史为渲染层内存状态，不调用页面后退或加载外部 URL。
 
@@ -61,7 +61,7 @@ Codex 事件搜索在 SQL 中按已保存预览关键词和类型筛选后分页
 
 ## 下一阶段演进约束（规划，未实现）
 
-按主规划 A–D 顺序，A 已增加驱动验证与身份语义；B 已接入桌面恢复与有界分页，C 已提供单快照交换，D01 已增加检查点与可取消更新。当前持久化范围明确为标准化预览，完整正文与规模性能仍待完成。
+按主规划 A–D 顺序，A 已增加驱动验证与身份语义；B 已接入桌面恢复与有界分页，C 已提供单快照交换，D01 已增加检查点与可取消更新。D02 已增加 SQLite 正文附表与快照绑定的按需读取，时间线/搜索/交换仍限预览，规模性能待 D03。
 
 - Electron 主进程提供受控的应用数据目录，Go 负责数据库与快照写入、版本迁移和恢复。数据库文件不放在安装目录，渲染层继续不接收任意文件系统权限。
 - 区分来源身份、快照版本和事件引用。当前路径哈希加物理行号不足以独立定位历史内容；同路径替换不得让旧标注或分析悄悄指向新事件。正式字段同步修改 `contracts/` 与两端类型。
@@ -72,3 +72,5 @@ Codex 事件搜索在 SQL 中按已保存预览关键词和类型筛选后分页
 - 持久化扩容同时补任务列表分页、按需正文和有界事件渲染；先测数据库查询与内存峰值，再调整现有配额。导出包重新导入不能依赖旧机器绝对路径，原来源定位与包内证据分别表达。
 
 恢复验收至少包括正常重启、强制中断、写入失败、迁移失败、源文件移走和重复更新；本轮具体证据见 M0 进度。无参数独立引擎保留内存测试模式，退出清空；桌面始终使用数据库模式。检查点更新依据见 [M2 进度](../development/m2-progress.md)；仍完整校验源字节，只搜索已保存预览。
+
+D02 的正文读取由渲染层 getEventContent → preload 白名单 → 主进程 runs.eventContent → SQLite BLOB 切片完成；每次只返回一个 UTF-8 有界页，DOM 替换旧页，切换事件/记录时忽略迟到响应。正文附表与检查点同事务，迁移不读来源；[存储说明](storage-validation.md) 记录旧库、补存和失败语义，字段以 contracts 为准。

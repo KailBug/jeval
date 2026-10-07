@@ -68,7 +68,7 @@ func TestCheckpointMatchesFullReadAcrossChangesAndRestart(t *testing.T) {
 				if report.Mode == "incremental" && report.ParsedLines >= next.Lines+1 {
 					t.Fatal("append parsed the full prefix")
 				}
-				// Serialize both parts, as a restarted engine does; no live parser state survives.
+				// Serialize preview and sidecar independently, as storage does after restart.
 				encoded, _ := json.Marshal(next)
 				cp = new(Checkpoint)
 				if err := json.Unmarshal(encoded, cp); err != nil {
@@ -79,6 +79,18 @@ func TestCheckpointMatchesFullReadAcrossChangesAndRestart(t *testing.T) {
 				saved = new(model.Record)
 				if err := json.Unmarshal(encoded, saved); err != nil {
 					t.Fatal(err)
+				}
+				bodies := make([]*string, len(events))
+				for n := range events {
+					bodies[n] = events[n].FullContent
+				}
+				encoded, _ = json.Marshal(bodies)
+				var restored []*string
+				if err := json.Unmarshal(encoded, &restored); err != nil {
+					t.Fatal(err)
+				}
+				for n := range saved.Events {
+					saved.Events[n].FullContent = restored[n]
 				}
 			}
 		})

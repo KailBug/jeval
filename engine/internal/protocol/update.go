@@ -89,7 +89,14 @@ func (s *scanService) updateBase(ctx context.Context, id string) (*codex.Checkpo
 		return cp, nil, err
 	}
 	record, err := s.store.Current(ctx, id)
-	return cp, &record, err
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = s.store.RestoreContents(ctx, &record)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cp, &record, nil
 }
 
 func (s *scanService) runUpdate(ctx context.Context, previous model.Run) {

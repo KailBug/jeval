@@ -102,6 +102,8 @@ func (s *scanService) dispatch(req Request) Response {
 	case "hello":
 		res.Result = hello(s.store != nil)
 		return res
+	case "runs.eventContent":
+		return s.eventContent(req)
 	case "runs.events":
 		if s.store != nil {
 			return s.persistedEvents(req)

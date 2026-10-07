@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { useBrowseHistory } from './browse-history'
+import { EventContent } from './EventContent'
 import { ScanPicker } from './ScanPicker'
 import logo from '../../../resources/jeval.svg'
 import type {
@@ -816,6 +817,7 @@ function RunDetail({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [evidence, setEvidence] = useState<RunEvent>()
+  const [fullContent, setFullContent] = useState<string>()
   const [attempt, setAttempt] = useState(0)
   const [eventSearch, setEventSearch] = useState('')
   const [eventKind, setEventKind] = useState<RunEvent['kind'] | 'all'>('all')
@@ -833,6 +835,7 @@ function RunDetail({
     setEvents([])
     setNextOffset(null)
     setEvidence(undefined)
+    setFullContent(undefined)
     setError('')
     const timer = setTimeout(() => {
       void window.jeval
@@ -968,7 +971,8 @@ function RunDetail({
         )}
         {!run.demo && (
           <p className="snapshot-completeness">
-            已保存标准化事件和每条正文最多 8 KiB 的预览；未保存原始文件备份，搜索不覆盖截断部分。
+            时间线和搜索仅使用每条正文最多 8 KiB
+            的预览。点击“查看完整正文”可读取已保存的标准化文本；旧记录或交换文件可能缺少正文。未保存原始文件和附件。
           </p>
         )}
         {!run.demo && run.importInfo && (
@@ -980,7 +984,7 @@ function RunDetail({
             </p>
             <p>
               每条正文最多 8
-              KiB，截断部分未保存；不含原始文件备份、分析或标注。导出保留来源路径，分享前请检查。
+              KiB，不含另存的完整正文、原始文件备份、分析或标注。导出保留来源路径，分享前请检查。
             </p>
             <p className="export-source-path">
               来源路径：<code>{run.importInfo.file}</code>
@@ -1069,7 +1073,9 @@ function RunDetail({
             ))}
           </select>
         </div>
-        <p className="event-search-hint">搜索范围为当前快照中的正文预览；截断部分需查看源文件。</p>
+        <p className="event-search-hint">
+          搜索范围为当前快照中的正文预览；已保存的截断部分可按需查看，不参与搜索。
+        </p>
         {filtered && !loading && !error && (
           <p className="event-match-count" role="status">
             匹配 {total} 个事件 · 保留原始序号
@@ -1146,6 +1152,22 @@ function RunDetail({
                     </summary>
                     <pre>{event.content}</pre>
                   </details>
+                )}
+                {!run.demo && event.evidence.snapshotId && (
+                  <>
+                    <button
+                      className="evidence-link"
+                      aria-expanded={fullContent === event.id}
+                      onClick={() =>
+                        setFullContent(fullContent === event.id ? undefined : event.id)
+                      }
+                    >
+                      {fullContent === event.id ? '收起完整正文' : '查看完整正文'}
+                    </button>
+                    {fullContent === event.id && (
+                      <EventContent key={event.id} runId={run.id} event={event} />
+                    )}
+                  </>
                 )}
                 <button
                   className="evidence-link"

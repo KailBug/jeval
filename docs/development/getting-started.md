@@ -163,3 +163,15 @@ try {
 先确认 `bin/jeval-engine.exe`（开发模式）或 `resources/engine/jeval-engine.exe`（目录包）存在。开发模式可重新运行 `npm run build:engine`；目录包缺文件时重新运行 `npm run pack`。基础连接错误会显示在界面中，可使用“重新连接引擎”；需要更多诊断时从终端启动开发模式查看输出。
 
 若诊断显示数据库损坏、版本过新、迁移失败或权限问题，应保留应用用户数据目录及 `library.sqlite`/WAL 文件；应用不会自动删除或重建。修复权限或使用兼容版本后再重连。开发测试可用 `--user-data-dir=绝对目录` 为 Electron 指定独立资料库；不要用已有私人资料库作为合成测试目录。直接运行协议引擎时，`--database ABSOLUTE_FILE` 的父目录须存在；不传参数则为独立内存测试模式。
+
+## D02 正文回归
+
+`npm run check` 自动包含 `tests/integration/full-content.test.ts`；`npm run test:e2e` 包含正文离线分页、空/缺失和错误重试检查。设置 `JEVAL_PACKAGED_EXECUTABLE` 仍可复测目录包/安装版。单独复验随包正文引擎：
+
+```powershell
+$env:JEVAL_CONTENT_EXECUTABLE = (Resolve-Path 'release/win-unpacked/resources/engine/jeval-engine.exe').Path
+node --import tsx --test tests/integration/full-content.test.ts
+Remove-Item Env:JEVAL_CONTENT_EXECUTABLE
+```
+
+测试创建独立合成来源和资料库并清理，不读取默认私人资料库。SQLite v5 迁移不会读取原来源；旧记录要在原文件仍可用时点击更新才补存正文。当前交换文件不包含完整正文，范围以 contracts 为准。

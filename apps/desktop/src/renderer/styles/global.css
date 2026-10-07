@@ -1261,3 +1261,26 @@ pre,
 .record-export .export-success {
   color: var(--success);
 }
+
+.full-content-panel {
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid #dedede;
+  border-radius: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.full-content-panel p {
+  font-size: 13px;
+  color: #555;
+}
+.full-content-panel code {
+  font-size: 11px;
+}
+.full-content-text {
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}

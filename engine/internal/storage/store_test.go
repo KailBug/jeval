@@ -28,6 +28,10 @@ func sample(t *testing.T) (model.Run, []model.Event, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// These existing fixtures exercise preview-only persistence and migration.
+	for i := range events {
+		events[i].FullContent = nil
+	}
 	return run, events, path
 }
 
@@ -86,6 +90,9 @@ func TestAtomicPublishAndImmutableHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	updated, next, err := codex.Read(path)
+	for i := range next {
+		next[i].FullContent = nil
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

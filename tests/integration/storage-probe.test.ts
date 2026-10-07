@@ -21,7 +21,7 @@ test('distributed engine creates, migrates and reopens SQLite without source fil
     })
     assert.deepEqual(JSON.parse(result.stdout), {
       storageCheck: 'ok',
-      schemaVersion: 4,
+      schemaVersion: 5,
       scope: 'synthetic-preview-only'
     })
     assert.equal(result.stderr, '')
