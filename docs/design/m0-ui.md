@@ -1,6 +1,6 @@
 # M0 界面与交互说明
 
-更新日期：2026-10-05。状态：沿用用户指定的 Apple Mac / Codex 简洁风格，B 的恢复/分页之上增加 C 的原生导入、完整快照导出范围、JSON/Markdown 操作与只读来源提示。C 检查依据见 [M3 进度](../development/m3-progress.md)，此前检查见 [M0 进度](../development/m0-progress.md)，完整视觉/缩放验收未完成。
+更新日期：2026-10-07。现有实现仍是 Apple Mac / Codex 简洁风格及 B/C 交互；本次仅加入 DeepSeek Harness / Langfuse 的后续设计参考，未修改 UI 或重新执行视觉检查。C 检查依据见 [M3 进度](../development/m3-progress.md)，此前检查见 [M0 进度](../development/m0-progress.md)，完整视觉/缩放验收未完成。
 
 ![M0 合成记录浏览截图](m0-desktop.png)
 
@@ -93,3 +93,16 @@ C 的最终目录包通过 6 项 E2E，新增 JSON/Markdown 完整快照导出�
 | F：Jev          | 输入范围预览、无密钥、排队、取消、超时、证据不足与旧版本结果分别有状态；关闭分析仍能浏览、标注和导出                                           |
 
 本地预览前检查实际数据长度、中文/英文/长路径、1440/1000 宽度及 Windows 100%/125%/150% 缩放。记录实际检查环境与问题，截图必须使用合成或获准公开的脱敏内容；既有两种宽度截图不能代替缩放、读屏或长日志验收。
+
+## 跨 harness 轨迹与实验参考（尚未实现）
+
+用户于 2026-10-07 指定 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 和 Langfuse 作为轨迹 UI 参考。本轮核对 DeepSeek 的 [ui-trajectory 说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-trajectory/README.md)：借鉴回合/步骤分组、工具/子工具层级、交互时间概览、输入输出检查器及可见行虚拟化。实验和评分组织参考 [Langfuse 实验模型](https://langfuse.com/docs/evaluation/experiments/data-model)。仅记录交互方向，不声明已运行参考应用或完成截图对照。
+
+后续按 [功能清单](../../doc/feature-list.md) 的 H01/H02 逐项实现，保留 jeval 证据与跨来源语义，不要求照搬实现或视觉资产：
+
+- 层级浏览区分会话、回合、步骤、工具与子任务；来源缺失某层级时明确缺失，不编造树结构。
+- 详情展示输入、输出、原始证据、用量与错误；完整内容按需读取，原始文本不执行为命令或 HTML。
+- 时间概览只使用已记录时间；缺失、重叠与并发分别呈现，不把顺序当作真实耗时。选区可定位相关事件。
+- 长轨迹保持有界渲染；搜索范围明确，不因当前可见窗口而静默漏掉其他已保存事件。
+- 实验比较保留任务、配置与评分版本，缺失指标不算零；原生 verifier、规则指标和 Jev 判断分别标识。
+- 每项验证两种窗口与常用缩放、键盘焦点、长文本、空/加载/错误状态及真实长度样本；主规划中的规模目标必须实测。
