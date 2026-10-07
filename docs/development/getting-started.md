@@ -1,6 +1,6 @@
 # 开发运行指南
 
-更新日期：2026-10-05。命令均从仓库根目录执行，示例使用 Windows PowerShell。
+更新日期：2026-10-07。命令均从仓库根目录执行；安装验证脚本要求 PowerShell 7 (`pwsh`)，其余示例使用 PowerShell。
 
 ## 环境与首次运行
 
@@ -55,7 +55,7 @@ npm run dev
 | `npm run check`        | 类型检查、Go/集成测试和生产构建；不包含 E2E                                             |
 | `npm run test:e2e`     | 启动真实 Electron 测试；需先执行 `npm run build`                                        |
 | `npm run pack`         | 先构建，再生成 Windows 本机的目录包                                                     |
-| `npm run dist:win`     | 构建 NSIS 开发安装包的入口；尚未执行安装验收                                            |
+| `npm run dist:win`     | 构建 NSIS 开发安装包；A02 已验证本机静默安装/启动/卸载，干净系统仍待验收                |
 
 检查前关闭正在运行的 jeval，避免 Windows 占用待覆盖的引擎或目录包文件。`test:desktop` 单独执行时也要求已有 `bin/jeval-engine.exe`，通常直接运行 `npm test`。
 
@@ -119,6 +119,28 @@ try {
 ### 真实来源审计
 
 A01 的公开脱敏分支语料在 `npm run check` 的集成检查和 `npm run test:e2e` 中自动验证。显式清单命令、来源资格、目录包环境变量及私人数据边界见 [真实来源矩阵](../adapters/codex-source-matrix.md)。`scripts/validation` 也纳入类型检查；审计命令不会自动扫描来源目录或联网。私人原始文件不得放入测试目录，避免被普通 E2E trace 或 CI 产物收集。
+
+### NSIS 安装回归
+
+生成 `release/jeval Setup 0.1.0-dev.0.exe` 后，以下命令仅在没有已有 jeval 安装或运行实例的 Windows 开发机执行。脚本会创建 `.local/windows-installation/中文 安装`，不允许复用已存在的验证目录、覆盖已有安装/快捷方式或穿过 junction。卸载只针对回执标记的本轮副本。使用新的 `-RunName` 可重新验证，不自动删除历史证据。
+
+```powershell
+npm run dist:win
+pwsh -NoProfile -File scripts/validation/windows-installation.ps1 -Action Install
+# 单独复核已安装产物（不重新安装）：
+pwsh -NoProfile -File scripts/validation/windows-installation.ps1 -Action Verify
+$env:JEVAL_PACKAGED_EXECUTABLE = '.local/windows-installation/中文 安装/jeval.exe'
+$env:JEVAL_AUDIT_EXECUTABLE = '.local/windows-installation/中文 安装/resources/engine/jeval-engine.exe'
+try {
+  npm run test:e2e
+  if ($LASTEXITCODE -ne 0) { throw 'Installed desktop regression failed.' }
+} finally {
+  Remove-Item Env:JEVAL_PACKAGED_EXECUTABLE,Env:JEVAL_AUDIT_EXECUTABLE -ErrorAction SilentlyContinue
+  pwsh -NoProfile -File scripts/validation/windows-installation.ps1 -Action Uninstall
+}
+```
+
+先检查每步成功再继续。失败时保留 receipt 与现场；安装不完整、注册目标不匹配或应用仍运行时，脚本拒绝卸载，不强制结束用户进程。CI 上传 installation.json 回执，包含本次安装包摘要与核对结果；本地回执留在忽略目录。原生选择器需另行在安装版用合成样本操作并记录，E2E 的选择器返回值替换不能替代它。准确验收边界见 [A02 本机记录](../releases/m0-preview.md#2026-10-07-a02本机安装验收)。
 
 ### 桌面入口
 

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "phase": "uninstalled",
+  "version": "0.1.0-dev.0",
+  "checkedAt": "2026-10-07T12:07:43.2927293Z",
+  "installerSha256": "a1649d8cf5545b1df031d4e219fb5d217c09009c2d2cd44da0ec15d306d5036b",
+  "installerBytes": 118118293,
+  "signature": "NotSigned",
+  "hostBuild": "10.0.26200.0",
+  "cleanEnvironment": false,
+  "files": {
+    "jeval.exe": "a24ed01b375d49b1261de2294d8672c1cfb31dd315d9a1879bca4bd793bb322e",
+    "resources/app.asar": "7a0f92e8132cbe8fd7f7487932f28bf3a3aebd4d1910296e26210413c4f5027a",
+    "resources/engine/jeval-engine.exe": "6218fb75979ea52eaa10cd7a39e718c5448f71511a1bd84e07af2a9f499104da",
+    "resources/engine/THIRD-PARTY-NOTICES.txt": "02a0fb000024573e65be1da8a2a8bf1b27e084893a12b3b3a0342d471cba05c3"
+  },
+  "uninstallerSha256": "cb8f64308ba9df43f5c3151add382ca0991486be9faeebc254fd1fa8de14c58a",
+  "externalTestProfilePreserved": true,
+  "sourceBaseline": "6367bb4bb47bc0fc4d60088f1336dd5dd9e35731",
+  "host": "Windows 11 Home China x64",
+  "node": "24.19.0",
+  "go": "1.27.0",
+  "electron": "44.5.1",
+  "electronBuilder": "26.15.3",
+  "scope": "Developer-machine validation only; user explicitly deferred clean Windows validation.",
+  "installationMode": "NSIS silent current-user; Chinese and space-containing install/profile/source paths",
+  "nativePicker": {
+    "method": "computer-use Windows UI, no dialog mock",
+    "cancelPreservesList": true,
+    "syntheticFixture": "fixtures/adapters/codex/classic.jsonl",
+    "sourceSha256": "09489eef26189a0b0c97a3102df2fdb92ea36bb4937ce9c7b2de3775c07a1037",
+    "importedRuns": 1,
+    "events": 5,
+    "warnings": 2,
+    "sourceUnchanged": true,
+    "offlineRestart": true
+  },
+  "installedE2E": {
+    "passed": 8,
+    "failed": 0,
+    "dialogSelection": "test-supplied return values; separate from native-picker observation"
+  },
+  "repeatInstallation": {
+    "phase": "uninstalled",
+    "bundledEngineTestsPassed": 3
+  },
+  "guardChecks": ["existing-run-rejected", "traversal-run-name-rejected"],
+  "notVerified": [
+    "Windows without Go/Node",
+    "interactive installer wizard",
+    "downloaded installer SmartScreen experience",
+    "signing",
+    "restricted-user permissions",
+    "DPI matrix",
+    "production upgrade/migration",
+    "default-profile uninstall policy"
+  ]
+}
