@@ -287,6 +287,7 @@ func TestNativeEmbeddedLocatorIsEvidenceOnlyDuringUpdateAndExport(t *testing.T) 
 	run.ImportInfo.File = filepath.Join(t.TempDir(), "embedded\x00-path.jsonl")
 	for n := range events {
 		events[n].Evidence.Location = run.ImportInfo.File
+		events[n].FullContent = nil // The exchange intentionally carries only previews.
 	}
 	bundle := saveBundle(t, run, events)
 	store := openLibrary(t, filepath.Join(t.TempDir(), "library.sqlite"))

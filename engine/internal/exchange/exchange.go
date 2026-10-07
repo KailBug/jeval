@@ -449,6 +449,9 @@ func strictShape(data json.RawMessage, kind reflect.Type, path string) error {
 		for n := 0; n < kind.NumField(); n++ {
 			field := kind.Field(n)
 			tag := strings.Split(field.Tag.Get("json"), ",")
+			if tag[0] == "-" {
+				continue
+			}
 			value, found := object[tag[0]]
 			if !found {
 				if len(tag) > 1 && tag[1] == "omitempty" {

@@ -266,6 +266,10 @@ function registerIPC(): void {
       await ready
       return engine.request('runs.get', { runId: id })
     },
+    'jeval:event-content': async (params) => {
+      await ready
+      return engine.request('runs.eventContent', params)
+    },
     'jeval:events': async (params) => {
       await ready
       return engine.request('runs.events', params)

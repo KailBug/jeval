@@ -1,5 +1,5 @@
-// Package storage persists immutable normalized previews and derived indexes
-// for bounded task and event queries. It never reads or changes source files.
+// Package storage persists immutable previews, full normalized text and indexes
+// for bounded queries. It never reads or changes source files.
 package storage
 
 import (
@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const SchemaVersion = 4
+const SchemaVersion = 5
 const schemaVersion = SchemaVersion
 
 const (
@@ -67,6 +67,13 @@ CREATE TABLE source_checkpoints (
  checkpoint_json BLOB NOT NULL CHECK(length(checkpoint_json) <= 1048576),
  checksum TEXT NOT NULL,
  FOREIGN KEY(source_id, snapshot_id) REFERENCES snapshots(source_id, id)
+);`, `
+CREATE TABLE event_contents (
+ snapshot_id TEXT NOT NULL,
+ event_id TEXT NOT NULL,
+ body BLOB NOT NULL CHECK(length(body) <= 16777216),
+ PRIMARY KEY(snapshot_id,event_id),
+ FOREIGN KEY(snapshot_id,event_id) REFERENCES snapshot_events(snapshot_id,id)
 );`}
 
 type Store struct {
@@ -139,7 +146,7 @@ func (s *Store) migrate(ctx context.Context, steps []string) error {
 	return tx.Commit()
 }
 
-// Save publishes one immutable, preview-only normalized snapshot. Retaining
+// Save publishes an immutable preview snapshot and any supplied full bodies. Retaining
 // previous versions ensures old evidence never silently points at new content.
 func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) error {
 	return s.save(ctx, run, events, false, nil)
@@ -199,6 +206,11 @@ func (s *Store) save(ctx context.Context, run model.Run, events []model.Event, d
 	}
 	if inserted != 0 {
 		if err = writeIndex(ctx, tx, run, events); err != nil {
+			return err
+		}
+	}
+	if !detached {
+		if err = saveContents(ctx, tx, run, events); err != nil {
 			return err
 		}
 	}

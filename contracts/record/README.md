@@ -2,7 +2,7 @@
 
 TypeScript 定义位于 `contracts/index.ts`，Go 对应结构位于 `engine/internal/model/record.go`。当前示例为 `engine/internal/demo/records.json`，通过 Go embed 进入可执行文件，以免依赖运行目录或私有文件。真实子进程集成测试验证两端对这些样例的解释。
 
-`Record` 包含 `schemaVersion=1`、`runs` 和 `events`。运行保存标题、项目、来源、是否为演示、状态与可选指标；事件保存运行 ID、来源顺序、种类、角色、原文、父事件 ID 与证据引用。
+`Record` 包含 `schemaVersion=1`、`runs` 和 `events`。运行保存标题、项目、来源、是否为演示、状态与可选指标；事件保存运行 ID、来源顺序、种类、角色、正文预览、父事件 ID 与证据引用。
 
 - `startedAt`、`timestamp`、`durationMs` 和 `tokens` 未知时为 `null`，不可替换为 0 或当前时间。
 - `status=unknown` 表示缺少完成状态，不能据此判断成功、失败或仍在运行。
@@ -25,5 +25,11 @@ TypeScript 定义位于 `contracts/index.ts`，Go 对应结构位于 `engine/int
 - `adapterVersion` 当前为 `codex-rollout-v1`。改变字段映射、投影去重或正文预览规则时需更新该值。
 - `snapshotId` 为 `snapshot-` 加小写 SHA-256 十六进制。输入是 UTF-8 紧凑 JSON 数组 `[1,sourceId,sha256,adapterVersion]`，其中 1 为记录 schemaVersion，摘要是实际读取的原始字节 SHA-256。实现见 [snapshot.go](../../engine/internal/model/snapshot.go)。同一路径相同字节和适配器规则产生相同快照；仅追加空行也会产生新快照。
 - 永久事件引用是 `(snapshotId,event.id)`，父事件只在同一快照中解析。物理行号与事件 ID 不能单独充当跨版本引用；旧标注/分析不得在更新后自动指向新快照。
-- `file` / `location` 是读取时的来源定位，`sha256` 是来源字节摘要。B 的桌面任务库保存标准化预览，正文规则及 adapterVersion 沿用 A；没有原始字节副本，离线读取预览不代表能离线重建原文件。搜索只覆盖已保存预览，完整正文后置；C 的交换包必须声明这一范围，不将来源摘要描述为包内原文件摘要。
+- `file` / `location` 是读取时的来源定位，`sha256` 是来源字节摘要。B 的桌面任务库保存标准化预览，正文规则及 adapterVersion 沿用 A；没有原始字节副本，离线读取预览不代表能离线重建原文件。D02 另存完整标准化文本供按需查看，搜索仍只覆盖预览；C 的交换包必须声明预览范围，不将来源摘要描述为包内原文件摘要。
 - C 的 JSON 包保留此来源/快照/事件身份和所有已保存事件，导入不访问定位中的文件，也不授予来源更新权限。任务库可返回 `Run.readOnly=true` 表示外部导入的只读资料，此字段为本地派生权限，不写入不可变快照或原生交换包。交换的严格字段、版本、大小、null 和引用校验以 [交换契约](../exchange/README.md) 为准。
+
+## D02：完整正文与预览身份
+
+`RunEvent.content` 仍为原有正文预览，不新增交换字段。Go 的 `FullContent` 仅为适配器到存储的内部负载（json:"-"），不会进入记录 JSON、搜索索引或原生交换。完整文本按 `(snapshotId,event.id)` 保存在本机 SQLite，读取接口见 [协议](../protocol/README.md)。
+
+D02 不改变既有字段映射、去重或预览裁剪，因此保留 codex-rollout-v1 与原有快照身份。首次显式解析可为同一预览身份补存正文；已有正文内容冲突则拒绝事务，不覆盖。正文的可用性是本地存储状态，可由缺失变为存在，不改变不可变预览。旧库与交换包的缺失内容不能从预览推导。完整仅指已支持文本映射，不能据此声称原始来源完整归档。

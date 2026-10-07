@@ -379,6 +379,8 @@ func normalize(ctx context.Context, path string, data []byte, state *parseState)
 			event.Title = "工具调用"
 		}
 		event.Title, _ = clip(event.Title, 256)
+		full := event.Content
+		event.FullContent = &full
 		var truncated bool
 		event.Content, truncated = clip(event.Content, MaxTextBytes)
 		if truncated {

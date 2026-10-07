@@ -151,7 +151,24 @@ export interface EventQuery {
   offset?: number
   limit?: number
 }
+// Full normalized text is local-only; offsets count UTF-8 bytes, pages <= 32 KiB.
+export interface EventContentQuery {
+  runId: string
+  snapshotId: string
+  eventId: string
+  offset?: number
+}
+export interface EventContentPage {
+  snapshotId: string
+  eventId: string
+  available: boolean
+  content: string
+  offset: number
+  totalBytes: number
+  nextOffset: number | null
+}
 export interface DesktopAPI {
+  getEventContent(query: EventContentQuery): Promise<EventContentPage>
   readonly platform: string
   importCodex(): Promise<ImportResult | null>
   importRecord(): Promise<ImportResult | null>

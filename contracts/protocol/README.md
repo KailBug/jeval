@@ -24,6 +24,7 @@
       "runs.list",
       "runs.get",
       "runs.events",
+      "runs.eventContent",
       "codex.import",
       "codex.update",
       "codex.update.start",
@@ -104,3 +105,13 @@ C 的 records.import / records.export 仅在持久化模式提供并列入 hello
 交换错误包括 IMPORT_FAILED（包读取/版本/引用/保存失败）、RECORD_CONFLICT（同来源已有不同当前版本）、EXPORT_FAILED（目标保护、编码或文件写入失败），参数、未找到与配额错误沿用 INVALID_PARAMS / NOT_FOUND / IMPORT_LIMIT。输出先临时写入并同步，再替换目标；失败清理，不先截断原文件。数据库/旁路文件与已登记来源受保护，链接/特殊目标拒绝；选择器取消在发送请求前发生，尚无写入过程中的取消协议。
 
 桌面由主进程提供应用数据目录下的 `library.sqlite`，以 `--database ABSOLUTE_FILE` 启动引擎；握手增加 `persistent-library` 及目录方法能力。启动迁移或恢复失败会退出并报错，不回退空内存库，也不删除数据库。无参数独立引擎保留内存模式用于协议测试，此模式退出清空且不提供目录持久化。两者都提供 runs.get / codex.update，演示仍来自 embed，不写数据库。记录契约版本与 SQLite 布局版本独立，详见 [存储说明](../../docs/architecture/storage-validation.md)。
+
+## D02：按需完整正文
+
+持久化引擎 hello 增加 `runs.eventContent` 能力，protocolVersion 仍为 1。请求参数为 `{runId,snapshotId,eventId,offset?}`；三个 ID 必填，分别最多 128/128/256 UTF-8 字节，offset 缺省 0，必须为 0..16777216 的整数并落在 UTF-8 字符边界内。必须传事件原始证据中的快照，不自动跟随当前指针；旧历史快照也可读取。
+
+返回 `{snapshotId,eventId,available,content,offset,totalBytes,nextOffset}`。偏移和总长度均以 UTF-8 字节计；每页正文最多 32768 字节，末尾向前对齐字符边界，下一页使用实际 nextOffset。编码后的响应仍小于 1 MiB；没有下一页时 nextOffset=null。available=true 且 totalBytes=0 表示已保存的空正文；available=false 表示此事件没有完整正文（content=""、totalBytes=0、nextOffset=null，仅接受 offset=0），不能用预览充当原文。偏移等于正文长度返回空终页；越界或落在多字节字符中间返回 INVALID_PARAMS。
+
+身份不属于同一个来源/快照/事件时 NOT_FOUND；数据库错误为 STORAGE_FAILED；无持久化库时 METHOD_NOT_FOUND。读取不访问来源文件。正文仅为适配器映射后的文本，不含原始 JSONL 备份、图片/附件或未支持字段；每事件 16 MiB、每快照合计 32 MiB，超限整笔保存回滚。runs.events、搜索与 records.export 的 v1 预览范围不变。
+
+检查点续接前从同一快照恢复完整正文；旧库缺失任一正文时手动更新回退 full/content-not-saved，即使源字节未变化也重新解析并补存。启动、浏览和迁移不主动访问原文件。交换包不携带正文，嵌入路径不会授予补存权限。

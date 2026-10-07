@@ -45,7 +45,7 @@ CI 已配置构建 NSIS、静默安装、核对关键文件、再跑安装版 8 
 
 `npm run pack` 在当前 Windows 环境生成 `release/win-unpacked`；桌面入口为 `jeval.exe`，Go 引擎位于 `resources/engine/jeval-engine.exe`。必须保留整个目录，产物不纳入版本控制。
 
-2026-10-05 A 切片新增无 cgo SQLite 驱动及 `resources/engine/THIRD-PARTY-NOTICES.txt`，B 将其接入用户数据目录中的 `library.sqlite`。`JEVAL_STORAGE_EXECUTABLE` 指向最终随包引擎时，`npm run test:storage` 通过；独立探针只验证合成数据库，桌面恢复另由 E2E 验证，均不代替安装验收。没有源文件备份，正文仍是预览。
+2026-10-05 A 切片新增无 cgo SQLite 驱动及 `resources/engine/THIRD-PARTY-NOTICES.txt`，B 将其接入用户数据目录中的 `library.sqlite`。`JEVAL_STORAGE_EXECUTABLE` 指向最终随包引擎时，`npm run test:storage` 通过；独立探针只验证合成数据库，桌面恢复另由 E2E 验证，均不代替安装验收。此探针为合成预览范围；D02 完整正文另由 M2 的集成与桌面 E2E 验证，仍没有源文件备份。
 
 `npm run dist:win` 在 A02 已生成并验证本机 NSIS 安装包；具体摘要、静默安装及原生选择范围见上节，干净系统仍待验收。当前配置启用 Windows 图标/版本资源写入，使用 `signExecutable: false` 关闭代码签名；不作为正式签名发布配置。运行与 GoLand 常见问题见 [开发运行指南](../development/getting-started.md)。
 
@@ -87,3 +87,7 @@ CI 已配置构建 NSIS、静默安装、核对关键文件、再跑安装版 8 
 公开 Alpha 只承诺已明确验收范围内的 Codex 与 Windows x64；ATIF、第二来源和文件监听不作为本轮发布前置。Jev 未达目标时继续使用本地预览定位，不以打包成功代替 Alpha 验收。
 
 每次检查保留日期、提交/产物版本、样本授权与合成/真实属性、环境、命令或人工步骤、结果及未覆盖项。中文/空格安装与数据路径、权限不足、100%/125%/150% 缩放、强制中断和迁移失败需要独立记录；卸载时的数据保留/清理行为应在实现后明确并验证。许可证仍待作者决定，干净环境和真实样本未具备时保留对应待办。
+
+## D02 目录包边界
+
+D02 开发预览新增完整标准化文本本地保存与按需分页，详情见 [M2 进度](../development/m2-progress.md)。只在显式导入/更新时补存，旧预览或交换缺失正文不伪造恢复。导出仍为预览，搜索不覆盖正文截断部分。A02 的安装包摘要仅标识当时产物，不是 D02 产物；本机 D02 使用目录包验证，不再次安装 NSIS。CI 配置继续构建 NSIS 并运行安装版 E2E，实际结果以对应 PR 为准。干净系统、签名、生产升级和规模验收保持待办。

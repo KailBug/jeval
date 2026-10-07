@@ -1,8 +1,12 @@
 # M0 开发记录
 
-更新日期：2026-10-07。当前 A02 交付分支：`feat/a02-windows-installation`，基线 main `6367bb4`；此前记录保留原分支背景。
+更新日期：2026-10-07。当前 D02 交付分支：`feat/d02-full-event-content`，基线 main `adf094d`；此前记录保留原分支背景。
 
 阶段结论：**M0 进行中，Codex 文件导入、目录发现后选择导入、记录内搜索/类型筛选可用，里程碑未验收完成**。主规划中的决策与清单见 [开发规划](../jeval-development-plan.md)，专题入口见 [文档索引](../README.md)。
+
+## 2026-10-07 D02：完整正文
+
+A02 [PR #13](https://github.com/KailBug/jeval/pull/13) 已合并，本地 main 已快进到 adf094d，最终 push/PR CI 通过。用户本轮“继续”授权 D02；同目录分支开发，不创建 worktree。正文保存、迁移、按需分页、离线更新和验证依据集中记录在 [M2 进度](m2-progress.md)。A02 干净 Windows 待办保留，D02 不代表 M0–M2 整体验收，也不自动进入 D03。
 
 ## 2026-10-07 A02：Windows 本机安装链路
 

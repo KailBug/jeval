@@ -60,7 +60,9 @@ func ReadUpdate(ctx context.Context, path string, old *Checkpoint, saved *model.
 	if old != nil {
 		report.Reason = "checkpoint-invalid"
 		if checkpointMatches(old, saved, path) {
-			if len(data) < old.Offset {
+			if !hasFullContents(saved) {
+				report.Reason = "content-not-saved"
+			} else if len(data) < old.Offset {
 				report.Reason = "source-truncated"
 			} else if fmt.Sprintf("%x", sha256.Sum256(data[:old.Offset])) != old.SHA256 {
 				report.Reason = "source-rewritten"
@@ -150,4 +152,14 @@ func hasProjection(ctx context.Context, data []byte) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// Preview-only legacy snapshots cannot seed a lossless update.
+func hasFullContents(record *model.Record) bool {
+	for _, event := range record.Events {
+		if event.FullContent == nil {
+			return false
+		}
+	}
+	return true
 }

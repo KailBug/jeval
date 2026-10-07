@@ -19,6 +19,7 @@ const api: DesktopAPI = {
   hello: () => ipcRenderer.invoke('jeval:hello'),
   listRuns: (query) => ipcRenderer.invoke('jeval:runs', query),
   getRun: (runId) => ipcRenderer.invoke('jeval:run', runId),
+  getEventContent: (query) => ipcRenderer.invoke('jeval:event-content', query),
   listEvents: (query) => ipcRenderer.invoke('jeval:events', query),
   restartEngine: () => ipcRenderer.invoke('jeval:restart')
 }
