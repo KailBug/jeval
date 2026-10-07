@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"jeval/engine/internal/adapters/codex"
+
 	"jeval/engine/internal/model"
 	"jeval/engine/internal/storage"
 )
@@ -31,6 +33,15 @@ func (f *faultyLibrary) Save(ctx context.Context, run model.Run, events []model.
 		return f.saveErr
 	}
 	return f.libraryStore.Save(ctx, run, events)
+}
+func (f *faultyLibrary) SaveCheckpoint(ctx context.Context, run model.Run, events []model.Event, cp *codex.Checkpoint) error {
+	if f.onSave != nil {
+		f.onSave()
+	}
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	return f.libraryStore.SaveCheckpoint(ctx, run, events, cp)
 }
 func (f *faultyLibrary) SaveDirectory(ctx context.Context, path string) (storage.Directory, error) {
 	if f.directoryErr != nil {

@@ -20,7 +20,7 @@ npm run dev
 
 窗口顶部箭头支持访问记录和来源的后退/前进，无历史时禁用。若旧目录包提示“仅支持 classic rollout”，关闭旧程序并重新打包/打开最新 exe；修复版已支持用户提供的 Codex 0.160.0 paginated 文件。长内容的 8 KiB 预览提示表示展示被截断，不等于文件导入失败。
 
-取消文件选择不会改变已有记录。相同路径再次导入会更新快照；“刷新记录”仅重新查询已保存列表。已确认的标准化快照保存在应用用户数据目录的 `library.sqlite`，应用/引擎重启后恢复，源文件移走仍能浏览保存的预览。手动“更新已登记记录”完整重读当前记录的原路径，读取或写入失败保留旧快照。单文件上限 16 MiB / 5000 个事件；尚无自动同步，完整限制见 [Codex 适配器](../adapters/codex.md)。
+取消文件选择不会改变已有记录。相同路径再次导入会更新快照；“刷新记录”仅重新查询已保存列表。已确认的标准化快照保存在应用用户数据目录的 `library.sqlite`，应用/引擎重启后恢复，源文件移走仍能浏览保存的预览。手动“更新已登记记录”启动后台任务，核对原路径字节后用检查点续接或完整重算；可取消，读取或写入失败保留旧快照，重启后复用已提交检查点。单文件上限 16 MiB / 5000 个事件；尚无自动同步，完整限制见 [Codex 适配器](../adapters/codex.md)。
 
 ## 发现目录中的 Codex 记录
 
@@ -102,6 +102,19 @@ try {
 ```
 
 此检查仍由开发机 Node 执行合成样本和独立临时库，不等同于无开发工具的安装或生产升级验收。
+
+D01 的跨进程检查点验证包含在 `npm run check`；对最终随包引擎可执行：
+
+```powershell
+$env:JEVAL_CHECKPOINT_EXECUTABLE = 'release/win-unpacked/resources/engine/jeval-engine.exe'
+try {
+  node --import tsx --test tests/integration/checkpoint-update.test.ts
+} finally {
+  Remove-Item Env:JEVAL_CHECKPOINT_EXECUTABLE -ErrorAction SilentlyContinue
+}
+```
+
+该检查使用合成样本逐次重启，并与独立资料库完整导入比较；不是实际来源兼容或性能验收。
 
 ### 桌面入口
 

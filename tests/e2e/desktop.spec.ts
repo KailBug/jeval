@@ -103,10 +103,15 @@ test('Codex discovery previews without importing, supports selection/all, and ca
       type: 'response_item',
       payload: { type: 'message', role: 'user', content: 'x'.repeat(7000) }
     })
-    await writeFile(
-      resolve(large, 'large.jsonl'),
-      fixture.toString().split('\n')[0] + '\n' + (message + '\n').repeat(2000)
-    )
+    // Keep real discovery active long enough for a native UI cancel click.
+    // A single file can finish before Playwright dispatches the click; completed
+    // jobs correctly stay completed instead of being retroactively cancelled.
+    for (let index = 0; index < 8; index++) {
+      await writeFile(
+        resolve(large, `large-${index}.jsonl`),
+        fixture.toString().split('\n')[0] + '\n' + (message + '\n').repeat(2000)
+      )
+    }
     await application.evaluate(({ dialog }, path) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] })
     }, large)

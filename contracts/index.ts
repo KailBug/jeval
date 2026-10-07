@@ -49,6 +49,20 @@ export interface ImportResult {
   run: Run
   replaced: boolean
 }
+export interface UpdateStatus {
+  id: string
+  runId: string
+  state: 'running' | 'cancelling' | 'completed' | 'cancelled' | 'failed'
+  phase: 'reading' | 'parsing' | 'saving' | 'done'
+  message: string
+  run?: Run
+  report?: {
+    mode: 'full' | 'incremental' | 'unchanged'
+    reason: string
+    verifiedBytes: number
+    parsedLines: number
+  }
+}
 export type RecordExportFormat = 'json' | 'markdown'
 export interface ExportResult {
   path: string
@@ -142,7 +156,9 @@ export interface DesktopAPI {
   importCodex(): Promise<ImportResult | null>
   importRecord(): Promise<ImportResult | null>
   exportRecord(runId: string, format: RecordExportFormat): Promise<ExportResult | null>
-  updateCodex(runId: string): Promise<ImportResult>
+  updateCodex(runId: string): Promise<UpdateStatus>
+  updateStatus(id: string): Promise<UpdateStatus>
+  cancelUpdate(id: string): Promise<UpdateStatus>
   scanCodex(directoryId?: string): Promise<ScanStatus | null>
   listCodexDirectories(): Promise<{ items: CodexDirectory[] }>
   removeCodexDirectory(id: string): Promise<{ ok: true }>

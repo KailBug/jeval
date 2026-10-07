@@ -33,7 +33,7 @@ func TestV2MigrationPreservesSnapshotsAndLocalPermission(t *testing.T) {
 	s := openTest(t, path)
 	var version, allowed int
 	var after []byte
-	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 3 {
+	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != SchemaVersion {
 		t.Fatal(version, err)
 	}
 	if err := s.db.QueryRow("SELECT update_allowed FROM sources").Scan(&allowed); err != nil || allowed != 1 {

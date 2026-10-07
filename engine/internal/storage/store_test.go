@@ -222,6 +222,9 @@ func TestAbruptProcessExit(t *testing.T) {
 		if _, err = tx.Exec("PRAGMA cache_size=1"); err != nil {
 			panic(err)
 		}
+		if _, err = tx.Exec("UPDATE source_checkpoints SET checkpoint_json='{}'"); err != nil {
+			panic(err)
+		}
 		if _, err = tx.Exec("UPDATE snapshots SET record_json=?", strings.Repeat("x", 1024*1024)); err != nil {
 			panic(err)
 		}
@@ -229,8 +232,8 @@ func TestAbruptProcessExit(t *testing.T) {
 	}
 	path := filepath.Join(t.TempDir(), "crash.sqlite")
 	s := openTest(t, path)
-	run, events, _ := sample(t)
-	if err := s.Save(context.Background(), run, events); err != nil {
+	run, events, cp, _ := checkpointSample(t)
+	if err := s.SaveCheckpoint(context.Background(), run, events, cp); err != nil {
 		t.Fatal(err)
 	}
 	s.Close()
@@ -245,6 +248,9 @@ func TestAbruptProcessExit(t *testing.T) {
 	got, err := s.Current(context.Background(), run.ID)
 	if err != nil || !reflect.DeepEqual(got.Events, events) {
 		t.Fatal("uncommitted crash damaged snapshot", err)
+	}
+	if gotCP, err := s.Checkpoint(context.Background(), run.ID); err != nil || !reflect.DeepEqual(gotCP, cp) {
+		t.Fatal("uncommitted crash damaged checkpoint", err)
 	}
 	var result string
 	if err = s.db.QueryRow("PRAGMA integrity_check").Scan(&result); err != nil || result != "ok" {
