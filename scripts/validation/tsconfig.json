@@ -1,0 +1,9 @@
+{
+  "extends": "../../apps/desktop/tsconfig.json",
+  "include": [
+    "*.ts",
+    "../../apps/desktop/src/renderer/env.d.ts",
+    "../../tests/integration/source-audit.test.ts",
+    "../../tests/e2e/source-audit.spec.ts"
+  ]
+}

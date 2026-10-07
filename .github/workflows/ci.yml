@@ -29,6 +29,9 @@ jobs:
       - run: node --import tsx --test tests/integration/checkpoint-update.test.ts
         env:
           JEVAL_CHECKPOINT_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
+      - run: node --import tsx --test tests/integration/source-audit.test.ts
+        env:
+          JEVAL_AUDIT_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
       - run: npm run test:e2e
         env:
           JEVAL_PACKAGED_EXECUTABLE: release/win-unpacked/jeval.exe

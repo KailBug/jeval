@@ -1,6 +1,6 @@
 # M2 开发记录：D01 检查点更新
 
-更新日期：2026-10-07。状态：D01 本地验证通过，已提交 [PR #11](https://github.com/KailBug/jeval/pull/11)，最新远程结果见 [CI 检查](https://github.com/KailBug/jeval/pull/11/checks)；M2 尚未整体验收。P00 已由 [PR #10](https://github.com/KailBug/jeval/pull/10) 合并至 main `44a192f` 并同步，本轮用户“继续”仅授权 D01。执行范围见 [feature-list](../../doc/feature-list.md)。
+更新日期：2026-10-07。状态：D01 已由 [PR #11](https://github.com/KailBug/jeval/pull/11) 合并至 main `84fc7f2` 并同步，最终 push/PR CI 均通过，远程依据见 [CI 检查](https://github.com/KailBug/jeval/pull/11/checks)；M2 尚未整体验收。P00 已由 [PR #10](https://github.com/KailBug/jeval/pull/10) 合并至 main `44a192f` 并同步，D01 当次用户“继续”仅授权该功能。执行范围见 [feature-list](../../doc/feature-list.md)。
 
 ## 当前实现
 
@@ -34,4 +34,4 @@
 
 16 MiB/5000 事件/50000 行源上限、20 文件/50000 当前事件任务库配额保持不变。无文件监听、新文件自动导入、完整正文、性能提升承诺或后台调度器。首次单文件导入仍同步；手动更新仅后台解析阶段可取消，事务发布与取消按锁顺序决定，短暂保存期间查询可能等待。读前后文件状态检查可拒绝可检测的并发变更，不承诺外部持续写入的文件系统快照隔离。
 
-真实来源能力矩阵、真实磁盘耗尽/系统断电、NSIS/生产升级、完整正文和规模仍未验收。D01 达到阶段条件且最新 CI 通过后自动合并，同步 main 并停止；下一候选 A01 必须重新获得用户“继续”。
+D01 交付时真实来源能力矩阵、真实磁盘耗尽/系统断电、NSIS/生产升级、完整正文和规模未验收。D01 已在阶段条件和最新 CI 通过后合并并同步；本轮另获用户“继续”推进 A01，7 份真实旧轨迹的重启/历史追加重放、损失和来源范围见 [来源矩阵](../adapters/codex-source-matrix.md)。D01 的历史验证范围保持不变。

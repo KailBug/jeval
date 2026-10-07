@@ -1,0 +1,21 @@
+{
+  "samples": [
+    {
+      "id": "P01",
+      "path": "codexbar/parent.jsonl",
+      "sha256": "98b4bd22629d05211b284cdedb7e5e58c4b6ad615c12723dcc9ecfe5da54bbcf",
+      "provenance": "public-sanitized",
+      "expectedEvents": 0,
+      "expectedWarnings": 1
+    },
+    {
+      "id": "P02",
+      "path": "codexbar/child.jsonl",
+      "sha256": "56aed95f5a5a25734da03f2068164e652b0749d9a7ce6ac5d998ca93975ea5e9",
+      "provenance": "public-sanitized",
+      "expectedEvents": 0,
+      "expectedWarnings": 1,
+      "parentSample": "P01"
+    }
+  ]
+}

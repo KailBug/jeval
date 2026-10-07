@@ -13,7 +13,7 @@
     "build:icons": "node scripts/build/icons.mjs",
     "build:engine": "node scripts/build/engine.mjs",
     "build": "npm run build:icons && npm run build:engine && npm run build --workspace @jeval/desktop",
-    "typecheck": "npm run typecheck --workspace @jeval/desktop",
+    "typecheck": "npm run typecheck --workspace @jeval/desktop && tsc --project scripts/validation/tsconfig.json",
     "test:engine": "node scripts/dev/test-engine.mjs",
     "test:desktop": "tsx --test tests/integration/*.test.ts",
     "test:storage": "tsx --test tests/integration/storage-probe.test.ts",
