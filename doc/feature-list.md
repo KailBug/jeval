@@ -7,7 +7,7 @@
 - 当前功能：D01，已登记记录检查点更新；用户本轮“继续”已授权。
 - 当前分支：`codex/d01-checkpoint-update`；开始基线为 main `44a192f`，P00 已由 [PR #10](https://github.com/KailBug/jeval/pull/10) 合并且本地快进同步。
 - 本轮授权：仅 D01 的实现、验证、文档、提交、PR、CI、合并及 main 快进同步。
-- 交付状态：D01 已实现，验证依据见 [M2 进度](../docs/development/m2-progress.md)；远程 CI 与合并结果以本阶段 PR 为准。
+- 交付状态：D01 本地验证通过，已提交 [PR #11](https://github.com/KailBug/jeval/pull/11)，验证依据见 [M2 进度](../docs/development/m2-progress.md)；远程 CI 与合并结果以该 PR 为准。
 - 合并后状态：必须等待用户“继续”；下一候选为 A01。本行是执行规则，不是已合并声明。实际合并/CI 以 PR 为准，下次获授权时更新记录。
 
 每个编号默认对应一个功能 PR 和一次“继续”授权。远期条目为待细化目标；开工前必须在本文件补齐范围、版本、样本和可执行验收，必要时拆为子编号。不得因为依赖满足而自动开始下一项。

@@ -1,6 +1,6 @@
 # M2 开发记录：D01 检查点更新
 
-更新日期：2026-10-07。状态：D01 已实现并进入交付验证；M2 尚未整体验收。P00 已由 [PR #10](https://github.com/KailBug/jeval/pull/10) 合并至 main `44a192f` 并同步，本轮用户“继续”仅授权 D01。执行范围见 [feature-list](../../doc/feature-list.md)。
+更新日期：2026-10-07。状态：D01 本地验证通过，已提交 [PR #11](https://github.com/KailBug/jeval/pull/11)，最新远程结果见 [CI 检查](https://github.com/KailBug/jeval/pull/11/checks)；M2 尚未整体验收。P00 已由 [PR #10](https://github.com/KailBug/jeval/pull/10) 合并至 main `44a192f` 并同步，本轮用户“继续”仅授权 D01。执行范围见 [feature-list](../../doc/feature-list.md)。
 
 ## 当前实现
 
@@ -27,6 +27,8 @@
 最终目录包的存储探针和检查点集成两项通过；CI 新增随包检查点验证步骤。随包引擎与 bin 的 SHA-256 一致，为 `73F56AFA6FFF0BC7DFDB41E5939A9A6AC8488F809A733D25C374D2630307E79E`；许可文本也一致。以上不代表 NSIS 或无开发工具环境验收。
 
 取消保留和异常进程恢复有 Go 确定性故障用例；桌面 E2E 另以有界长合成来源检查真实 preload/main/Go 取消链路，不将此描述为取消按钮人工操作或真实断电验收。更新失败的 1440/1000 窗口截图已查看，1000 窗口无横向溢出，详情可滚动。阶段 PR、最终 CI 和合并以远程实际记录为准。
+
+交付文档核对：21 份 Markdown 的 204 个本地链接目标存在，73 处 npm 命令引用有效；修改文件的 Prettier、Go 格式和 `git diff --check` 通过。主规划按既有 prettierignore 保留排版，已核对决策、里程碑状态与启动清单。补记 PR 链接只修改文档，不声称为此重新执行应用测试。
 
 ## 限制与下一步
 
