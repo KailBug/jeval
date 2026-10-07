@@ -24,7 +24,7 @@ A01 已由 [PR #12](https://github.com/KailBug/jeval/pull/12) 合并同步，最
 
 交付核对：PowerShell 7 语法解析无错误；23 份 Markdown 的 226 个本地链接目标存在，84 处 npm 命令引用有效；受管理的改动 Markdown/JSON/YAML 格式及 `git diff --check` 通过。主规划按既有排版人工核对决策、状态与启动清单，干净系统条目保持未勾选。
 
-当前仅本机范围通过，CI 和合并事实待远程 PR 核对。无开发工具的干净 Windows、交互式安装向导、下载签名/SmartScreen、受限权限、完整 DPI、默认资料卸载策略和生产升级迁移仍未验收。M0 不整体完成。合并同步后停止；下一候选 D02 必须再获“继续”，干净系统仍是 E03/发布待办。
+当前仅本机范围通过，交付为 [PR #13](https://github.com/KailBug/jeval/pull/13)，最新 [CI 检查](https://github.com/KailBug/jeval/pull/13/checks) 和合并事实以远程为准。无开发工具的干净 Windows、交互式安装向导、下载签名/SmartScreen、受限权限、完整 DPI、默认资料卸载策略和生产升级迁移仍未验收。M0 不整体完成。合并同步后停止；下一候选 D02 必须再获“继续”，干净系统仍是 E03/发布待办。
 
 ## 2026-10-07 A01：Codex 真实来源能力矩阵
 
