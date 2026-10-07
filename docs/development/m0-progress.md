@@ -1,8 +1,18 @@
 # M0 开发记录
 
-更新日期：2026-10-05。当前分支：`feat/record-exchange`；此前记录保留原分支背景。
+更新日期：2026-10-07。P00 交付分支：`codex/p00-development-workflow`；此前记录保留原分支背景。
 
 阶段结论：**M0 进行中，Codex 文件导入、目录发现后选择导入、记录内搜索/类型筛选可用，里程碑未验收完成**。主规划中的决策与清单见 [开发规划](../jeval-development-plan.md)，专题入口见 [文档索引](../README.md)。
+
+## 2026-10-07 P00：阶段开发规则与最终目标
+
+本轮基于已同步的 main `fabdda4`，在原有 `D:\jeval` 目录创建功能分支，没有创建 worktree。只修订文档：AGENTS、主规划/决策/状态/清单、索引、[feature-list](../../doc/feature-list.md)、[阶段流程](stage-workflow.md) 和轨迹 UI 参考。Codex Alpha 保留为中间交付，增加多 harness、Langfuse/Harbor 评测互操作、分部件分析与受控比较、eval 中可选 Jev 的最终范围。
+
+执行规则：一个功能一个 PR，阶段验收与最新 CI 通过后自动合并；确认工作区干净后切回 main 并 `git pull --ff-only origin main`，每次 merge 后必须等待用户“继续”。未配置定时任务、执行器或后台自动化；本轮不开始 D01。功能状态与合并事实以 PR 为准，下次授权时对账。
+
+核对 PR #8 已合并，其描述含历史 Windows CI 依据；不把历史检查计成本轮运行。公开轨迹和至少三个月前的本地旧轨迹已获测试范围授权，本轮没有读取私人样本；本地环境可用不提升真实来源或干净安装验收状态。已阅读 DeepSeek 轨迹 UI、Harbor ATIF/Rewardkit 和 Langfuse 数据/实验模型作为规划依据，不声明上游互操作已通过。
+
+本轮本地文档验证（Windows，2026-10-07）：20 份 Markdown 的 185 个本地链接目标存在，70 处 npm 脚本引用对应 package.json；28 个功能编号与依赖无缺失、重复或环。7 份受 Prettier 管理的改动文档格式检查及 `git diff --check` 通过；主规划沿用 prettierignore 排版，人工核对决策、状态、启动清单和单阶段授权边界。没有在本机重新执行应用测试；M0–M3 状态不变，M6–M8 仅新增目标。交付为 [PR #10](https://github.com/KailBug/jeval/pull/10)，最终远程 CI 以 [检查记录](https://github.com/KailBug/jeval/pull/10/checks) 为准，不预先声明通过或合并。
 
 ## 2026-10-05 C 切片进入 M3
 
@@ -226,6 +236,8 @@ B 已通过 PR #7 合并；本轮从最新 `origin/main`（`212ac86`）创建 `f
 ## 后续工作
 
 M0 仍未全部验收。执行切片及完整退出条件以 [主规划](../jeval-development-plan.md) 为准，当前顺序如下：
+
+2026-10-07 更新：以下 A–F 是中间版本范围，C 已实现，详见 M3；本次 P00 合并同步后等待“继续”，下一项 D01 及后续 G–I 最终目标以 [feature-list](../../doc/feature-list.md) 为准。下面的历史阶段说明不授权自动跨阶段执行。
 
 1. A：存储驱动、快照身份及样本能力矩阵基础已完成；补授权真实样本与干净 Windows 安装启动引擎，保留未验收状态。
 2. B：本轮已接入来源配置、确认快照、桌面重启/离线恢复、任务/事件分页和手动完整重读更新；正文策略为已标明范围的标准化预览，完整正文与规模基线待补。
