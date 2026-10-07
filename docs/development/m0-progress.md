@@ -29,7 +29,7 @@ D01 已由 [PR #11](https://github.com/KailBug/jeval/pull/11) 合并并快进同
 
 交付前复核：最终 14 项 Node 集成测试通过；23 份 Markdown 的 219 个本地链接目标存在，80 处 npm 脚本引用有效；改动文件的 Prettier 与 `git diff --check` 通过。主规划沿用 prettierignore 排版，人工核对决策、状态、启动清单与当前授权一致。公开 JSONL/许可证保持上游字节和摘要，私人清单与资料库均不进入提交。
 
-限制：普通消息与 function/custom 工具仅对本批子集通过。WebSearch、McpToolCall、FileChange、Plan 等存在未映射记录；完整真实 classic/分支对话、父线程树、全部发布版本、token/耗时、完整正文、真实持续写入和性能仍未验收。M0–M3 不标记整体验收完成。CI 与合并事实以远程 PR 为准，不在合并前预写成功。合并同步后停止，下一候选为 A02，须再次收到“继续”。
+限制：普通消息与 function/custom 工具仅对本批子集通过。WebSearch、McpToolCall、FileChange、Plan 等存在未映射记录；完整真实 classic/分支对话、父线程树、全部发布版本、token/耗时、完整正文、真实持续写入和性能仍未验收。M0–M3 不标记整体验收完成。交付为 [PR #12](https://github.com/KailBug/jeval/pull/12)，最新 [CI 检查](https://github.com/KailBug/jeval/pull/12/checks) 与合并事实以远程为准，不在合并前预写成功。合并同步后停止，下一候选为 A02，须再次收到“继续”。
 
 ## 2026-10-07 P00：阶段开发规则与最终目标
 
