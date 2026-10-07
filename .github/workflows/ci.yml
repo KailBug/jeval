@@ -22,7 +22,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:e2e
-      - run: npm run pack
+      - run: npm run dist:win
       - run: npm run test:storage
         env:
           JEVAL_STORAGE_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
@@ -35,6 +35,22 @@ jobs:
       - run: npm run test:e2e
         env:
           JEVAL_PACKAGED_EXECUTABLE: release/win-unpacked/jeval.exe
+      - name: Install and verify NSIS payload
+        id: install
+        run: pwsh -NoProfile -File scripts/validation/windows-installation.ps1 -Action Install
+      - name: Test installed desktop
+        run: npm run test:e2e
+        env:
+          JEVAL_PACKAGED_EXECUTABLE: .local/windows-installation/中文 安装/jeval.exe
+          JEVAL_AUDIT_EXECUTABLE: .local/windows-installation/中文 安装/resources/engine/jeval-engine.exe
+      - name: Uninstall test copy
+        if: always() && steps.install.outcome == 'success'
+        run: pwsh -NoProfile -File scripts/validation/windows-installation.ps1 -Action Uninstall
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.install.outcome == 'success'
+        with:
+          name: windows-installation-evidence
+          path: .local/windows-installation/installation.json
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

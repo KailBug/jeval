@@ -35,7 +35,7 @@ C 增加 [exchange 包](../../engine/internal/exchange/exchange.go) 负责包版
 | Go 标准库与 embed 演示数据        | 演示不依赖开发目录、数据库或私有日志，可验证打包链路                                                         |
 | electron-builder + extraResources | Go 二进制与窗口图标随目录包携带；Electron 固定为 44.5.1；Windows exe 写入原创 ICO 资源，保留不签名的开发构建 |
 | 首个真实来源 Codex                | 支持 classic/paginated 子集；一份 0.160.0 记录已在本地验证，完整版本兼容矩阵尚未验收                         |
-| Windows x64 本机验证              | 目录包已运行；不据此声明安装验收或跨平台支持完成                                                             |
+| Windows x64 本机验证              | 目录包已运行；A02 本机 NSIS 安装/启动/卸载及原生选择通过，见预览验收；干净系统与跨平台支持仍未验收           |
 
 SQLite 使用 modernc.org/sqlite v1.60.1，无 cgo；项目许可证仍待作者确定。来源身份使用规范化路径，快照带原始字节摘要、适配器版本与快照 ID；事件证据绑定具体版本。记录和 C 的单快照交换字段以 contracts 为准，仅冻结 v1 明确支持的 Codex 预览范围，不承诺未来格式自动兼容。
 

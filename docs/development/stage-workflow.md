@@ -1,6 +1,6 @@
 # 阶段自动开发流程
 
-更新日期：2026-10-07。状态：P00 建立的仓库执行约定；不是已部署的定时调度服务。当前功能及授权以 feature-list 和用户本轮指令为准；D01 已合并，本轮为 A01；后续 PR 使用英文，分支使用 feat/ 等非 codex/ 前缀。功能入口为 [feature-list](../../doc/feature-list.md)，方向以 [主规划](../jeval-development-plan.md) 为准。
+更新日期：2026-10-07。状态：P00 建立的仓库执行约定；不是已部署的定时调度服务。当前功能及授权以 feature-list 和用户本轮指令为准；A01 已合并，本轮为 A02 本机安装验证；用户确认干净环境待办保留；后续 PR 使用英文，分支使用 feat/ 等非 codex/ 前缀。功能入口为 [feature-list](../../doc/feature-list.md)，方向以 [主规划](../jeval-development-plan.md) 为准。
 
 ## 交付与授权单位
 
