@@ -1,0 +1,623 @@
+{
+  "schemaVersion": 1,
+  "checkedOn": "2026-10-07",
+  "baselineCommit": "84fc7f26781dbfa1dd5787dc07bbe0a4c5f3149f",
+  "environment": {
+    "os": "Windows x64",
+    "node": "24.19.0",
+    "go": "1.27.0",
+    "electron": "44.5.1",
+    "packagedEngineSha256": "b911d9b9122f26475d44262cd728e78a64e5b7a52b1a483e15762264c97d5674"
+  },
+  "localCutoffExclusive": "2026-07-07T00:00:00+08:00",
+  "excludedCandidates": [
+    {
+      "id": "L06",
+      "reason": "Contains events on or after the authorized cutoff; not imported or displayed"
+    }
+  ],
+  "scope": "Finite source subset; preview evidence, restart/update/offline exchange, and desktop pagination. No full-version, full-fork-dialogue, live-writer, installation, or performance claim.",
+  "publicProvenance": {
+    "repository": "https://github.com/steipete/CodexBar",
+    "commit": "eda352c17d41d8bbb55b6b4b1c5cf2a5588bc536",
+    "license": "MIT",
+    "scope": "Real-derived sanitized metadata and usage only; dates and IDs are aliases; original version unknown"
+  },
+  "sources": {
+    "schemaVersion": 1,
+    "adapterVersion": "codex-rollout-v1",
+    "results": [
+      {
+        "id": "L01",
+        "provenance": "local-historical",
+        "sha256": "75a4ae60fa6815a0d77d0c7b98e99c6f7e19399070a6e8fda98fba4afe83f8e1",
+        "bytes": 136048,
+        "rows": 43,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 24,
+        "pages": 1,
+        "eventKinds": {
+          "lifecycle": 4,
+          "message": 10,
+          "tool_call": 5,
+          "tool_result": 5
+        },
+        "verifiedNonzeroExitResults": 1,
+        "warningCount": 3,
+        "warningSamples": {
+          "尚未映射的 item_completed 类型，已跳过": 1,
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 2
+        },
+        "truncatedEvents": 2,
+        "sourceTypes": {
+          "event_msg": 17,
+          "response_item": 23,
+          "session_meta": 1,
+          "turn_context": 2
+        },
+        "responseTypes": {
+          "custom_tool_call": 1,
+          "custom_tool_call_output": 1,
+          "function_call": 4,
+          "function_call_output": 4,
+          "message": 10,
+          "reasoning": 3
+        },
+        "projectedTypes": {
+          "AgentMessage": 5,
+          "FileChange": 1,
+          "UserMessage": 2
+        },
+        "lifecycle": {
+          "task_complete": 2,
+          "task_started": 2
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 78393,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-02T02:09:03.179Z",
+        "latest": "2026-07-02T02:18:16.671Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "L02",
+        "provenance": "local-historical",
+        "sha256": "e22cc134f53f94cea202cae40c871d06f6f7ce86afd16916366d37621d492a25",
+        "bytes": 95647,
+        "rows": 31,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 18,
+        "pages": 1,
+        "eventKinds": {
+          "lifecycle": 2,
+          "message": 6,
+          "tool_call": 5,
+          "tool_result": 5
+        },
+        "verifiedNonzeroExitResults": 2,
+        "warningCount": 1,
+        "warningSamples": {
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 1
+        },
+        "truncatedEvents": 1,
+        "sourceTypes": {
+          "event_msg": 10,
+          "response_item": 19,
+          "session_meta": 1,
+          "turn_context": 1
+        },
+        "responseTypes": {
+          "function_call": 5,
+          "function_call_output": 5,
+          "message": 6,
+          "reasoning": 3
+        },
+        "projectedTypes": {
+          "AgentMessage": 3,
+          "UserMessage": 1
+        },
+        "lifecycle": {
+          "task_complete": 1,
+          "task_started": 1
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 80556,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-02T02:31:29.962Z",
+        "latest": "2026-07-02T02:36:31.455Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "L03",
+        "provenance": "local-historical",
+        "sha256": "a6dd25561516ec6ed9f105d2f4920d0df512391c5695310486c088663137dcf7",
+        "bytes": 327929,
+        "rows": 105,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 76,
+        "pages": 2,
+        "eventKinds": {
+          "lifecycle": 2,
+          "message": 12,
+          "tool_call": 31,
+          "tool_result": 31
+        },
+        "verifiedNonzeroExitResults": 1,
+        "warningCount": 9,
+        "warningSamples": {
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 9
+        },
+        "truncatedEvents": 9,
+        "sourceTypes": {
+          "event_msg": 21,
+          "response_item": 82,
+          "session_meta": 1,
+          "turn_context": 1
+        },
+        "responseTypes": {
+          "function_call": 31,
+          "function_call_output": 31,
+          "message": 12,
+          "reasoning": 8
+        },
+        "projectedTypes": {
+          "AgentMessage": 9,
+          "UserMessage": 1
+        },
+        "lifecycle": {
+          "task_complete": 1,
+          "task_started": 1
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 182715,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-02T02:44:36.308Z",
+        "latest": "2026-07-02T02:49:00.508Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "L04",
+        "provenance": "local-historical",
+        "sha256": "f133453b0f5c5bfca6b843896edbad1329f993f5f187cfeb24f065af66f3ae1f",
+        "bytes": 531864,
+        "rows": 229,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 129,
+        "pages": 3,
+        "eventKinds": {
+          "lifecycle": 28,
+          "message": 57,
+          "tool_call": 22,
+          "tool_result": 22
+        },
+        "verifiedNonzeroExitResults": 3,
+        "warningCount": 3,
+        "warningSamples": {
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 3
+        },
+        "truncatedEvents": 3,
+        "sourceTypes": {
+          "event_msg": 98,
+          "response_item": 116,
+          "session_meta": 1,
+          "turn_context": 14
+        },
+        "responseTypes": {
+          "function_call": 22,
+          "function_call_output": 22,
+          "message": 57,
+          "reasoning": 15
+        },
+        "projectedTypes": {
+          "AgentMessage": 27,
+          "UserMessage": 14
+        },
+        "lifecycle": {
+          "task_complete": 14,
+          "task_started": 14
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 207695,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-02T08:07:36.591Z",
+        "latest": "2026-07-04T04:21:35.506Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "L05",
+        "provenance": "local-historical",
+        "sha256": "55f1ea21248ba727beaa8b188038137b2b2c04022a41eaa9672a732b9c593ad3",
+        "bytes": 232582,
+        "rows": 52,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 31,
+        "pages": 1,
+        "eventKinds": {
+          "lifecycle": 6,
+          "message": 13,
+          "tool_call": 6,
+          "tool_result": 6
+        },
+        "verifiedNonzeroExitResults": 0,
+        "warningCount": 5,
+        "warningSamples": {
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 5
+        },
+        "truncatedEvents": 5,
+        "sourceTypes": {
+          "event_msg": 19,
+          "response_item": 29,
+          "session_meta": 1,
+          "turn_context": 3
+        },
+        "responseTypes": {
+          "function_call": 6,
+          "function_call_output": 6,
+          "message": 13,
+          "reasoning": 4
+        },
+        "projectedTypes": {
+          "AgentMessage": 5,
+          "UserMessage": 3
+        },
+        "lifecycle": {
+          "task_complete": 2,
+          "task_started": 3,
+          "turn_aborted": 1
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 119910,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-03T13:43:28.980Z",
+        "latest": "2026-07-05T04:53:23.507Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "L07",
+        "provenance": "local-historical",
+        "sha256": "d69683530a682ab3fa3b79cd33b2739cd62b12f5c05e7d2ba4529f682b5959c8",
+        "bytes": 8780588,
+        "rows": 890,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 423,
+        "pages": 9,
+        "eventKinds": {
+          "lifecycle": 20,
+          "message": 123,
+          "tool_call": 140,
+          "tool_result": 140
+        },
+        "verifiedNonzeroExitResults": 16,
+        "warningCount": 111,
+        "warningSamples": {
+          "尚未映射的 item_completed 类型，已跳过": 15,
+          "尚未映射的 response_item，已跳过": 14,
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 1
+        },
+        "truncatedEvents": 12,
+        "sourceTypes": {
+          "event_msg": 330,
+          "response_item": 548,
+          "session_meta": 1,
+          "turn_context": 11
+        },
+        "responseTypes": {
+          "custom_tool_call": 20,
+          "custom_tool_call_output": 20,
+          "function_call": 120,
+          "function_call_output": 120,
+          "message": 120,
+          "reasoning": 124,
+          "tool_search_call": 1,
+          "tool_search_output": 1,
+          "web_search_call": 22
+        },
+        "projectedTypes": {
+          "AgentMessage": 97,
+          "FileChange": 19,
+          "McpToolCall": 33,
+          "Plan": 1,
+          "UserMessage": 9,
+          "WebSearch": 22
+        },
+        "lifecycle": {
+          "task_complete": 8,
+          "task_started": 11,
+          "turn_aborted": 1
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 2426016,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-05T09:24:12.918Z",
+        "latest": "2026-07-05T12:36:09.735Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "L08",
+        "provenance": "local-historical",
+        "sha256": "8411bac5d3d31f7c995500218f700cb3f1c8863c1b5756937c33a96a5a3424e8",
+        "bytes": 323919,
+        "rows": 333,
+        "cliVersion": "0.142.5",
+        "sourceHistoryMode": "paginated",
+        "adapterHistoryMode": "paginated",
+        "eventCount": 213,
+        "pages": 5,
+        "eventKinds": {
+          "lifecycle": 2,
+          "message": 45,
+          "tool_call": 83,
+          "tool_result": 83
+        },
+        "verifiedNonzeroExitResults": 26,
+        "warningCount": 1,
+        "warningSamples": {
+          "长内容仅保留前 8 KiB 预览，原文仍在来源文件中": 1
+        },
+        "truncatedEvents": 1,
+        "sourceTypes": {
+          "event_msg": 85,
+          "response_item": 246,
+          "session_meta": 1,
+          "turn_context": 1
+        },
+        "responseTypes": {
+          "function_call": 83,
+          "function_call_output": 83,
+          "message": 45,
+          "reasoning": 35
+        },
+        "projectedTypes": {
+          "AgentMessage": 41,
+          "UserMessage": 1
+        },
+        "lifecycle": {
+          "task_started": 1,
+          "turn_aborted": 1
+        },
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": {
+          "prefixBytes": 184360,
+          "mode": "full",
+          "reason": "unsafe-prefix"
+        },
+        "earliest": "2026-07-05T10:07:53.787Z",
+        "latest": "2026-07-05T10:20:29.531Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "P01",
+        "provenance": "public-sanitized",
+        "sha256": "98b4bd22629d05211b284cdedb7e5e58c4b6ad615c12723dcc9ecfe5da54bbcf",
+        "bytes": 52918,
+        "rows": 137,
+        "cliVersion": "unknown",
+        "sourceHistoryMode": "unknown",
+        "adapterHistoryMode": "classic",
+        "eventCount": 0,
+        "pages": 1,
+        "eventKinds": {},
+        "verifiedNonzeroExitResults": 0,
+        "warningCount": 1,
+        "warningSamples": {
+          "此文件没有可展示的消息或工具事件": 1
+        },
+        "truncatedEvents": 0,
+        "sourceTypes": {
+          "event_msg": 135,
+          "session_meta": 1,
+          "turn_context": 1
+        },
+        "responseTypes": {},
+        "projectedTypes": {},
+        "lifecycle": {},
+        "hasFork": false,
+        "hasParent": false,
+        "historicalAppendReplay": null,
+        "earliest": "2030-01-01T12:00:00.000Z",
+        "latest": "2030-01-01T12:02:16.000Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      },
+      {
+        "id": "P02",
+        "provenance": "public-sanitized",
+        "sha256": "56aed95f5a5a25734da03f2068164e652b0749d9a7ce6ac5d998ca93975ea5e9",
+        "bytes": 62030,
+        "rows": 160,
+        "cliVersion": "unknown",
+        "sourceHistoryMode": "unknown",
+        "adapterHistoryMode": "classic",
+        "eventCount": 0,
+        "pages": 1,
+        "eventKinds": {},
+        "verifiedNonzeroExitResults": 0,
+        "warningCount": 1,
+        "warningSamples": {
+          "此文件没有可展示的消息或工具事件": 1
+        },
+        "truncatedEvents": 0,
+        "sourceTypes": {
+          "event_msg": 158,
+          "session_meta": 1,
+          "turn_context": 1
+        },
+        "responseTypes": {},
+        "projectedTypes": {},
+        "lifecycle": {},
+        "hasFork": true,
+        "hasParent": false,
+        "historicalAppendReplay": null,
+        "earliest": "2030-01-01T15:00:00.000Z",
+        "latest": "2030-01-02T12:00:22.000Z",
+        "checks": [
+          "source-evidence",
+          "canonical-coverage",
+          "tool-parents",
+          "unknown-metrics",
+          "restart",
+          "unchanged-update",
+          "offline-exchange",
+          "source-unchanged"
+        ]
+      }
+    ]
+  },
+  "packagedDesktop": {
+    "schemaVersion": 1,
+    "packaged": true,
+    "offlineRestart": true,
+    "results": [
+      {
+        "id": "L01",
+        "events": 24,
+        "renderedSequences": 24,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      },
+      {
+        "id": "L02",
+        "events": 18,
+        "renderedSequences": 18,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      },
+      {
+        "id": "L03",
+        "events": 76,
+        "renderedSequences": 76,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      },
+      {
+        "id": "L04",
+        "events": 129,
+        "renderedSequences": 129,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      },
+      {
+        "id": "L05",
+        "events": 31,
+        "renderedSequences": 31,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      },
+      {
+        "id": "L07",
+        "events": 423,
+        "renderedSequences": 423,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      },
+      {
+        "id": "L08",
+        "events": 213,
+        "renderedSequences": 213,
+        "checks": ["import-button", "all-event-pages", "update-button", "source-unchanged"]
+      }
+    ]
+  }
+}

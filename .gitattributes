@@ -1,0 +1,3 @@
+# Keep upstream corpus bytes stable so provenance hashes survive Windows checkout.
+fixtures/adapters/codex/public/codexbar/*.jsonl -text
+fixtures/adapters/codex/public/codexbar/LICENSE -text

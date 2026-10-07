@@ -116,6 +116,10 @@ try {
 
 该检查使用合成样本逐次重启，并与独立资料库完整导入比较；不是实际来源兼容或性能验收。
 
+### 真实来源审计
+
+A01 的公开脱敏分支语料在 `npm run check` 的集成检查和 `npm run test:e2e` 中自动验证。显式清单命令、来源资格、目录包环境变量及私人数据边界见 [真实来源矩阵](../adapters/codex-source-matrix.md)。`scripts/validation` 也纳入类型检查；审计命令不会自动扫描来源目录或联网。私人原始文件不得放入测试目录，避免被普通 E2E trace 或 CI 产物收集。
+
 ### 桌面入口
 
 在 Windows 文件资源管理器中打开 `D:\jeval\release\win-unpacked`，双击 `jeval.exe`。也可以在终端执行：
