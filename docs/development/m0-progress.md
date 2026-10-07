@@ -12,7 +12,7 @@
 
 核对 PR #8 已合并，其描述含历史 Windows CI 依据；不把历史检查计成本轮运行。公开轨迹和至少三个月前的本地旧轨迹已获测试范围授权，本轮没有读取私人样本；本地环境可用不提升真实来源或干净安装验收状态。已阅读 DeepSeek 轨迹 UI、Harbor ATIF/Rewardkit 和 Langfuse 数据/实验模型作为规划依据，不声明上游互操作已通过。
 
-本轮本地文档验证（Windows，2026-10-07）：20 份 Markdown 的 185 个本地链接目标存在，70 处 npm 脚本引用对应 package.json；28 个功能编号与依赖无缺失、重复或环。7 份受 Prettier 管理的改动文档格式检查及 `git diff --check` 通过；主规划沿用 prettierignore 排版，人工核对决策、状态、启动清单和单阶段授权边界。没有在本机重新执行应用测试；M0–M3 状态不变，M6–M8 仅新增目标。PR 与远程 CI 待提交后核实，不预先声明通过或合并。
+本轮本地文档验证（Windows，2026-10-07）：20 份 Markdown 的 185 个本地链接目标存在，70 处 npm 脚本引用对应 package.json；28 个功能编号与依赖无缺失、重复或环。7 份受 Prettier 管理的改动文档格式检查及 `git diff --check` 通过；主规划沿用 prettierignore 排版，人工核对决策、状态、启动清单和单阶段授权边界。没有在本机重新执行应用测试；M0–M3 状态不变，M6–M8 仅新增目标。交付为 [PR #10](https://github.com/KailBug/jeval/pull/10)，最终远程 CI 以 [检查记录](https://github.com/KailBug/jeval/pull/10/checks) 为准，不预先声明通过或合并。
 
 ## 2026-10-05 C 切片进入 M3
 
