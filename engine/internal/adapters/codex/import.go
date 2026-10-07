@@ -143,49 +143,74 @@ func Read(path string) (model.Run, []model.Event, error) {
 
 // ReadContext checks cancellation while reading and in both parsing passes.
 func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, error) {
-	var run model.Run
+	path, data, err := readSource(ctx, path)
+	if err != nil {
+		return model.Run{}, nil, err
+	}
+	return normalize(ctx, path, data, &parseState{})
+}
+
+func readSource(ctx context.Context, path string) (string, []byte, error) {
 	if err := ctx.Err(); err != nil {
-		return run, nil, err
+		return "", nil, err
 	}
 	if !filepath.IsAbs(path) || len(path) > 2048 || !strings.EqualFold(filepath.Ext(path), ".jsonl") {
-		return run, nil, fmt.Errorf("请选择绝对路径下的 .jsonl 文件")
+		return "", nil, fmt.Errorf("请选择绝对路径下的 .jsonl 文件")
 	}
 	path, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return run, nil, fmt.Errorf("无法读取所选文件：%w", err)
+		return "", nil, fmt.Errorf("无法读取所选文件：%w", err)
 	}
 	if len(path) > 2048 {
-		return run, nil, fmt.Errorf("来源路径超过 2048 字节上限")
+		return "", nil, fmt.Errorf("来源路径超过 2048 字节上限")
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return run, nil, fmt.Errorf("无法打开所选文件：%w", err)
+		return "", nil, fmt.Errorf("无法打开所选文件：%w", err)
 	}
 	defer f.Close()
 	stat, err := f.Stat()
 	if err != nil || !stat.Mode().IsRegular() {
-		return run, nil, fmt.Errorf("请选择普通文件")
+		return "", nil, fmt.Errorf("请选择普通文件")
 	}
 	if stat.Size() > MaxFileBytes {
-		return run, nil, fmt.Errorf("文件超过 16 MiB 导入上限")
+		return "", nil, fmt.Errorf("文件超过 16 MiB 导入上限")
 	}
 	data, err := io.ReadAll(io.LimitReader(contextReader{ctx, f}, MaxFileBytes+1))
 	if err != nil {
-		return run, nil, fmt.Errorf("读取文件失败：%w", err)
+		return "", nil, fmt.Errorf("读取文件失败：%w", err)
 	}
 	if len(data) > MaxFileBytes {
-		return run, nil, fmt.Errorf("文件超过 16 MiB 导入上限")
+		return "", nil, fmt.Errorf("文件超过 16 MiB 导入上限")
 	}
 	if !utf8.Valid(data) {
-		return run, nil, fmt.Errorf("记录必须使用 UTF-8 编码")
+		return "", nil, fmt.Errorf("记录必须使用 UTF-8 编码")
 	}
+	after, err := f.Stat()
+	current, pathErr := os.Stat(path)
+	if err != nil || pathErr != nil || !os.SameFile(stat, current) || stat.Size() != after.Size() || !stat.ModTime().Equal(after.ModTime()) || int64(len(data)) != after.Size() {
+		return "", nil, fmt.Errorf("来源在读取期间发生变化，请重试；已保存的快照保留")
+	}
+	return path, data, nil
+}
+
+// normalize shares the full-read semantics with the conservative append path.
+// A seed is used only after every prefix byte and the checkpoint were verified.
+func normalize(ctx context.Context, path string, data []byte, state *parseState) (model.Run, []model.Event, error) {
 	identity := filepath.Clean(path)
 	if runtime.GOOS == "windows" {
 		identity = strings.ToLower(identity)
 	}
 	id := fmt.Sprintf("codex-%x", sha256.Sum256([]byte(identity)))
 	info := &model.ImportInfo{File: path, SHA256: fmt.Sprintf("%x", sha256.Sum256(data)), Warnings: []model.ImportWarning{}}
-	run = model.Run{ID: id, Title: filepath.Base(path), Project: "未提供项目", Source: "Codex", Status: "unknown", ImportInfo: info}
+	run := model.Run{ID: id, Title: filepath.Base(path), Project: "未提供项目", Source: "Codex", Status: "unknown", ImportInfo: info}
+	if state.Seed != nil {
+		run = state.Seed.Runs[0]
+		previous := *run.ImportInfo
+		previous.Warnings = append([]model.ImportWarning{}, previous.Warnings...)
+		previous.SHA256 = info.SHA256
+		info, run.ImportInfo = &previous, &previous
+	}
 	warn := func(line int, message string) {
 		info.WarningCount++
 		if len(info.Warnings) < 30 {
@@ -206,10 +231,18 @@ func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, er
 	calls := map[string]string{}
 	resultCalls := map[int]string{}
 	hasMeta, hasTitle := false, false
+	if state.Seed != nil {
+		events = append(events, state.Seed.Events...)
+		for key, value := range state.Calls {
+			calls[key] = value
+		}
+		hasMeta, hasTitle = true, state.HasTitle
+	}
 	if bytes.Count(data, []byte{'\n'}) >= 50000 {
 		return model.Run{}, nil, fmt.Errorf("文件超过 50000 行导入上限")
 	}
 	lines := bytes.Split(bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf}), []byte{'\n'})
+	lines = lines[state.Lines:]
 	canonical, turns, err := messageKeys(ctx, lines)
 	if err != nil {
 		return model.Run{}, nil, err
@@ -218,7 +251,7 @@ func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, er
 		if err := ctx.Err(); err != nil {
 			return model.Run{}, nil, err
 		}
-		line := index + 1
+		line := index + state.Lines + 1
 		if len(bytes.TrimSpace(raw)) == 0 {
 			continue
 		}
@@ -291,6 +324,7 @@ func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, er
 				// Canonical message content comes from response_item, avoiding duplicates.
 				continue
 			case "item_completed":
+				state.Unsafe = true // Later canonical messages can rewrite any old projection.
 				var item payload
 				if json.Unmarshal(p.Item, &item) != nil {
 					warn(line, "无效的 item_completed.item，已跳过")
@@ -360,11 +394,14 @@ func ReadContext(ctx context.Context, path string) (model.Run, []model.Event, er
 			events[index].ParentID = &parent
 		} else {
 			warn(events[index].Evidence.Line, "工具结果未找到对应调用")
+			state.Unsafe = true // A later call may resolve this result and its warning.
 		}
 	}
 	if len(events) == 0 {
 		warn(1, "此文件没有可展示的消息或工具事件")
+		state.Unsafe = true
 	}
+	state.Calls, state.HasTitle = calls, hasTitle
 	run.EventCount = len(events)
 	info.AdapterVersion = AdapterVersion
 	info.SnapshotID = model.SnapshotID(run.ID, info.SHA256, AdapterVersion)

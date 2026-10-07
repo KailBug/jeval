@@ -17,13 +17,16 @@ type libraryStore interface {
 	Runs(context.Context) ([]model.Run, error)
 	Events(context.Context, string, string, string, int, int) ([]model.Event, int, error)
 	Save(context.Context, model.Run, []model.Event) error
+	SaveCheckpoint(context.Context, model.Run, []model.Event, *codex.Checkpoint) error
+	Checkpoint(context.Context, string) (*codex.Checkpoint, error)
+	Current(context.Context, string) (model.Record, error)
 	SaveDirectory(context.Context, string) (storage.Directory, error)
 	Directories(context.Context) ([]storage.Directory, error)
 	RemoveDirectory(context.Context, string) error
 }
 
 func hello(persistent bool) map[string]any {
-	capabilities := []string{"demo", "runs.list", "runs.get", "runs.events", "codex.import", "codex.update", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}
+	capabilities := []string{"demo", "runs.list", "runs.get", "runs.events", "codex.import", "codex.update", "codex.update.start", "codex.update.status", "codex.update.cancel", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}
 	if persistent {
 		capabilities = append(capabilities, "persistent-library", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
 	}
@@ -56,7 +59,7 @@ func newPersistentService(ctx context.Context, demo model.Record, store libraryS
 // publishRun is called under the service lock. Quotas are checked before any
 // write; after a successful commit, publishing metadata cannot fail. Persisted
 // events remain on disk instead of accumulating in the service's memory.
-func (s *scanService) publishRun(ctx context.Context, run model.Run, events []model.Event) (bool, error) {
+func (s *scanService) publishRun(ctx context.Context, run model.Run, events []model.Event, checkpoints ...*codex.Checkpoint) (bool, error) {
 	index, err := replacementIndex(&s.record, run, len(events))
 	if err != nil {
 		return false, err
@@ -64,7 +67,11 @@ func (s *scanService) publishRun(ctx context.Context, run model.Run, events []mo
 	if s.store == nil {
 		return replaceRun(&s.record, run, events)
 	}
-	if err := s.store.Save(ctx, run, events); err != nil {
+	var cp *codex.Checkpoint
+	if len(checkpoints) > 0 {
+		cp = checkpoints[0]
+	}
+	if err := s.store.SaveCheckpoint(ctx, run, events, cp); err != nil {
 		return false, fmt.Errorf("保存记录失败: %w", err)
 	}
 	if index < 0 {
@@ -107,7 +114,16 @@ func (s *scanService) importRun(req Request) Response {
 		}
 		path = params.Path
 	}
-	run, events, err := codex.Read(path)
+	var cp *codex.Checkpoint
+	var saved *model.Record
+	if expectedID != "" && s.store != nil {
+		var err error
+		cp, saved, err = s.updateBase(context.Background(), expectedID)
+		if err != nil {
+			return failure(req.ID, "IMPORT_FAILED", err.Error())
+		}
+	}
+	run, events, next, report, err := codex.ReadUpdate(context.Background(), path, cp, saved, nil)
 	if err != nil {
 		return failure(req.ID, "IMPORT_FAILED", err.Error())
 	}
@@ -117,11 +133,11 @@ func (s *scanService) importRun(req Request) Response {
 	if _, err := replacementIndex(&s.record, run, len(events)); err != nil {
 		return failure(req.ID, "IMPORT_LIMIT", err.Error())
 	}
-	replaced, err := s.publishRun(context.Background(), run, events)
+	replaced, err := s.publishRun(context.Background(), run, events, next)
 	if err != nil {
 		return failure(req.ID, "IMPORT_FAILED", err.Error())
 	}
-	return Response{Type: "response", Version: Version, ID: req.ID, Result: map[string]any{"run": run, "replaced": replaced}}
+	return Response{Type: "response", Version: Version, ID: req.ID, Result: map[string]any{"run": run, "replaced": replaced, "update": report}}
 }
 
 func (s *scanService) persistedEvents(req Request) Response {

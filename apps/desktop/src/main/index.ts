@@ -3,7 +3,13 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './engine-client'
-import type { CodexDirectory, Hello, Run, ScanStatus } from '../../../../contracts/index'
+import type {
+  CodexDirectory,
+  Hello,
+  Run,
+  ScanStatus,
+  UpdateStatus
+} from '../../../../contracts/index'
 
 let engine: EngineClient
 let ready: Promise<Hello>
@@ -12,6 +18,7 @@ let quitting = false
 let window: BrowserWindow | undefined
 let importing = false
 let scanID: string | undefined
+let updateID: string | undefined
 const rendererFile = join(__dirname, '../renderer/index.html')
 const developmentURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
 // Electron's Chromium switch doesn't consistently change app.getPath('userData').
@@ -30,6 +37,7 @@ else
 
 function startEngine(): Promise<Hello> {
   scanID = undefined
+  updateID = undefined
   const executable = process.platform === 'win32' ? 'jeval-engine.exe' : 'jeval-engine'
   const enginePath = app.isPackaged
     ? join(process.resourcesPath, 'engine', executable)
@@ -63,7 +71,17 @@ function registerIPC(): void {
     await ready
     return engine.request<ScanStatus>(method, { id })
   }
+  const updateRequest = async (method: string, id: unknown) => {
+    if (typeof id !== 'string' || id !== updateID) throw new Error('更新任务不存在或引擎已重启')
+    await ready
+    return engine.request<UpdateStatus>(method, { id })
+  }
   const ensureScanIdle = async () => {
+    if (updateID) {
+      const update = await updateRequest('codex.update.status', updateID)
+      if (update.state === 'running' || update.state === 'cancelling')
+        throw new Error('请等待当前更新完成或取消更新')
+    }
     if (!scanID) return
     const status = await scanRequest('codex.scan.status', scanID)
     if (status.state === 'running' || status.state === 'cancelling')
@@ -104,6 +122,8 @@ function registerIPC(): void {
     },
     'jeval:scan-status': (id) => scanRequest('codex.scan.status', id),
     'jeval:scan-cancel': (id) => scanRequest('codex.scan.cancel', id),
+    'jeval:update-status': (id) => updateRequest('codex.update.status', id),
+    'jeval:update-cancel': (id) => updateRequest('codex.update.cancel', id),
     'jeval:scan-candidates': async (params) => {
       const query = params as { id?: unknown; offset?: unknown } | null
       if (
@@ -170,7 +190,9 @@ function registerIPC(): void {
         if (run.demo || !run.importInfo) throw new Error('只能更新已登记的 Codex 记录')
         if (run.readOnly)
           throw new Error('只读交换快照不能更新本地来源；请显式重新导入原始 Codex 文件')
-        return await engine.request('codex.update', { runId: id }, 30000)
+        const update = await engine.request<UpdateStatus>('codex.update.start', { runId: id })
+        updateID = update.id
+        return update
       } finally {
         importing = false
       }

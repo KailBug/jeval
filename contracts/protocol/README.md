@@ -1,6 +1,6 @@
 # 桌面与引擎协议 v1
 
-传输为 UTF-8 JSON Lines：每条消息以 LF 结束。stdout 只传协议帧，stderr 写诊断；请求和响应均小于 1 MiB，超大输入关闭连接。引擎按输入顺序处理请求，目录扫描在后台进行，查询与扫描发布快照共用互斥锁；桌面按 ID 匹配响应，允许多个未完成请求。扫描进度由状态请求轮询，无主动通知帧。
+传输为 UTF-8 JSON Lines：每条消息以 LF 结束。stdout 只传协议帧，stderr 写诊断；请求和响应均小于 1 MiB，超大输入关闭连接。引擎按输入顺序处理请求，目录扫描与已登记记录更新在后台进行，查询与扫描发布快照共用互斥锁；桌面按 ID 匹配响应，允许多个未完成请求。扫描进度由状态请求轮询，无主动通知帧。
 
 请求：
 
@@ -26,6 +26,9 @@
       "runs.events",
       "codex.import",
       "codex.update",
+      "codex.update.start",
+      "codex.update.status",
+      "codex.update.cancel",
       "codex.scan.start",
       "codex.scan.status",
       "codex.scan.cancel",
@@ -57,7 +60,7 @@
 | `runs.get`                 | `runId`                                                          | 单条 `Run` 元数据；用于跨任务分页的历史/详情选择                                                 |
 | `runs.events`              | `runId`, `search?`, `kind?`, `offset?`, `limit?`                 | 单条运行内筛选后的事件分页，保留原始序号与证据                                                   |
 | `codex.import`             | `path`（绝对路径）                                               | `{ run, replaced }`；持久化模式先事务提交再发布当前版本，失败保留旧快照                          |
-| `codex.update`             | `runId`                                                          | `{ run, replaced }`；仅完整重读已登记 Codex 记录的来源路径，失败保留旧版本                       |
+| `codex.update`             | `runId`                                                          | `{ run, replaced, update }`；兼容同步更新，使用检查点或完整重算，失败保留旧版本                  |
 | `records.export`           | `runId`, `path`（保存选择器绝对路径）, `format`（json/markdown） | `{ path, format, snapshotId, eventCount }`；持久化模式导出完整当前快照，文件写入成功才返回       |
 | `records.import`           | `path`（打开选择器绝对路径）                                     | `{ run, replaced }`；持久化模式严格校验原生 JSON 并提交；新来源只读、同版本幂等                  |
 | `codex.directories.list`   | `{}`                                                             | `{ items: { id, path }[] }`；持久化模式保存的目录配置                                            |
@@ -67,7 +70,14 @@
 | `codex.scan.cancel`        | `id`（扫描 ID）                                                  | `ScanStatus`；活动任务进入 cancelling，终态任务原样返回                                          |
 | `codex.scan.candidates`    | `id`, `offset?`, `limit?`                                        | `Page<ScanCandidate>`；最近扫描的候选摘要，不发布记录                                            |
 | `codex.scan.import`        | `id`, `ids`（非空、无重复的候选 ID 数组）                        | `ScanStatus`；验证集合与整体配额后启动所选导入，返回 import/running                              |
+| `codex.update.start`       | `runId`                                                          | `UpdateStatus`；验证已登记且可更新的来源，立即返回后台任务                                       |
+| `codex.update.status`      | `id`                                                             | 最新 `UpdateStatus`；只保留最近一次更新任务                                                      |
+| `codex.update.cancel`      | `id`                                                             | `UpdateStatus`；活动更新进入 cancelling，终态幂等                                                |
 | `shutdown`                 | `{}`                                                             | `{ "ok": true }`，随后退出                                                                       |
+
+`UpdateStatus` 字段以 [TypeScript 定义](../index.ts) 为准：id/runId、state（running/cancelling/completed/cancelled/failed）、phase（reading/parsing/saving/done）和有界 message；成功附 run/report。phase 为最近处理阶段，不是百分比；取消/失败可保留最后阶段。report 的 mode 为 full/incremental/unchanged，reason 为 no-checkpoint/checkpoint-invalid/source-truncated/source-rewritten/unsafe-prefix/projection-reconciliation/verified-prefix/same-bytes；verifiedBytes 是读取校验字节数，parsedLines 是送入解析器的物理行槽数（含末尾空槽），未变时为零。`codex.import` 和兼容同步 `codex.update` 额外返回 update 报告；初次导入始终完整解析。
+
+扫描、所选导入、更新共享单个来源写入任务；重叠写入返回 SCAN_BUSY，旧终态扫描的取消不会取消更新。更新在锁外读取/解析，浏览仍读取旧版本；发布与取消用同一锁，已接受取消后不再提交，提交先完成则取消返回 completed。重启丢弃任务状态，旧 id 返回 NOT_FOUND；已提交的检查点仍可复用。读取、解析或提交失败通过 state=failed 返回，保留旧快照；启动参数/权限错误仍为错误响应，随机任务 ID 生成失败为 UPDATE_FAILED。无数据库模式使用相同状态协议但不持久化检查点，每次完整解析。桌面更新状态/取消只接受主进程持有的任务 ID。
 
 分页返回 `{ items, total, nextOffset }`。`offset` 从 0 开始，最大 10 亿；默认 `limit=50`，范围 1–100。页内元素的 JSON 编码预算为 512 KiB，必要时提前结束该页；调用方必须使用 nextOffset，不能把请求 limit 当作实际返回数。到达末页时 `nextOffset=null`，空结果 `items=[]`。搜索匹配标题、项目和来源，忽略英文大小写。状态支持 `all`、`completed`、`failed`、`unknown`。
 
@@ -81,9 +91,9 @@
 
 发现状态：`running → completed/limited`，limited 为遍历上限。发现终态可启动所选导入，使用同一扫描 ID 和 `phase=import`，状态为 `running → completed`；任一阶段取消为 `running → cancelling → cancelled`，终态取消幂等。发现不会修改任务库；所选导入先检查 20 个文件/50000 个事件配额，超额整批拒绝。导入重读并核对身份/摘要，变化或失败仅拒绝该项、保留旧快照；成功项按路径替换，取消后不再发布，已经完成的所选项保留。新扫描替换旧候选与状态，旧 ID 或重启前 ID 返回 NOT_FOUND；shutdown/输入结束取消并等待后台退出。
 
-错误码：`PARSE_ERROR`、`INVALID_REQUEST`、`PROTOCOL_MISMATCH`、`METHOD_NOT_FOUND`、`INVALID_PARAMS`、`NOT_FOUND`、`IMPORT_FAILED`（读取或快照提交失败）、`IMPORT_LIMIT`（任务库记录上限）、`SCAN_FAILED`（根目录/启动失败）、`SCAN_BUSY`（已有活动扫描，拒绝另一个扫描或单文件导入/更新）、`STORAGE_FAILED`（存储查询或目录配置写入失败）。无法解析的请求返回空 ID，其后的合法请求仍可处理。请求 ID 是不超过 128 字节的非空字符串。导入与扫描上限见 [Codex 适配器](../../docs/adapters/codex.md)。
+错误码：`PARSE_ERROR`、`INVALID_REQUEST`、`PROTOCOL_MISMATCH`、`METHOD_NOT_FOUND`、`INVALID_PARAMS`、`NOT_FOUND`、`IMPORT_FAILED`（读取或快照提交失败）、`IMPORT_LIMIT`（任务库记录上限）、`SCAN_FAILED`（根目录/启动失败）、`SCAN_BUSY`（已有活动扫描或更新，拒绝另一个来源写入任务）、`STORAGE_FAILED`（存储查询或目录配置写入失败）。无法解析的请求返回空 ID，其后的合法请求仍可处理。请求 ID 是不超过 128 字节的非空字符串。导入与扫描上限见 [Codex 适配器](../../docs/adapters/codex.md)。
 
-桌面请求默认超时 5 秒，单文件导入/手动更新为 30 秒，最多 128 个未完成请求。文件/目录选择与重启互斥，活动扫描期间拒绝新的导入/扫描/更新，但可重启引擎取消任务。超时不是取消；不自动重放导入或扫描启动。状态默认 300ms 轮询，失败后 1500ms 重试；错误可见且保留最后已知状态。连接损坏、子进程退出或输入管道错误时拒绝所有等待中的请求；界面提供显式重启。引擎重启恢复已提交快照和目录配置，清除扫描候选，界面保留当前选择；应用退出清除内存浏览历史。关闭时发送 shutdown，最多等候 1.5 秒后终止子进程。
+桌面请求默认超时 5 秒，单文件导入为 30 秒，后台更新启动/状态/取消为 5 秒，最多 128 个未完成请求。文件/目录选择与重启互斥，活动扫描或更新期间拒绝新的导入/扫描/更新，但可重启引擎取消任务。超时不是取消；不自动重放导入或扫描启动。扫描状态默认 300ms、更新状态 200ms 轮询，失败后 1500ms 重试；错误可见且保留最后已知状态。连接损坏、子进程退出或输入管道错误时拒绝所有等待中的请求；界面提供显式重启。引擎重启恢复已提交快照和目录配置，清除扫描候选和更新任务状态，界面保留当前选择；应用退出清除内存浏览历史。关闭时发送 shutdown，最多等候 1.5 秒后终止子进程。
 
 Electron 渲染层业务方法以 [DesktopAPI](../index.ts) 为准，另暴露只读 platform 字符串，不提供任意 IPC、路径访问或执行命令能力。`importCodex()` 无路径参数；`scanCodex()` 无参数时由主进程选择器提供路径，或仅提交保存的目录 ID；取消选择返回 null。`updateCodex` 只提交已登记运行 ID。候选/导入/状态/取消仅接受主进程持有的扫描 ID，候选集合由 Go 再校验。主进程检查调用窗口与顶层 frame URL，启用 context isolation、sandbox 和 CSP，拒绝新窗口与页面跳转。依据：[Electron 安全指南](https://www.electronjs.org/docs/latest/tutorial/security)、[electron-vite 构建文档](https://electron-vite.org/guide/build)。
 

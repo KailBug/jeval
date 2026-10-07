@@ -69,6 +69,7 @@ type scanService struct {
 	done       chan struct{}
 	candidates []ScanCandidate
 	store      libraryStore
+	update     *UpdateStatus
 }
 
 func (s *scanService) snapshot() ScanStatus {
@@ -78,7 +79,7 @@ func (s *scanService) snapshot() ScanStatus {
 }
 
 func (s *scanService) active() bool {
-	return s.scan != nil && (s.scan.State == "running" || s.scan.State == "cancelling")
+	return s.scan != nil && (s.scan.State == "running" || s.scan.State == "cancelling") || s.updateActive()
 }
 
 func (s *scanService) dispatch(req Request) Response {
@@ -89,6 +90,8 @@ func (s *scanService) dispatch(req Request) Response {
 	}
 	res := Response{Type: "response", Version: Version, ID: req.ID}
 	switch req.Method {
+	case "codex.update.start", "codex.update.status", "codex.update.cancel":
+		return s.dispatchUpdate(req)
 	case "records.export":
 		return s.exportRecord(req)
 	case "records.import":
@@ -271,7 +274,7 @@ func (s *scanService) dispatch(req Request) Response {
 			go func(done chan struct{}) { defer cancel(); s.importSelected(ctx, selection, done) }(s.done)
 			return res
 		}
-		if req.Method == "codex.scan.cancel" && s.active() {
+		if req.Method == "codex.scan.cancel" && (s.scan.State == "running" || s.scan.State == "cancelling") {
 			s.cancel()
 			s.scan.State = "cancelling"
 			s.scan.Message = "正在取消当前操作"
@@ -451,7 +454,7 @@ func (s *scanService) importSelected(ctx context.Context, selection []int, done 
 		s.mu.Lock()
 		candidate := s.candidates[index]
 		s.mu.Unlock()
-		run, events, err := codex.ReadContext(ctx, candidate.Path)
+		run, events, cp, _, err := codex.ReadUpdate(ctx, candidate.Path, nil, nil, nil)
 		if err == nil && (run.ID != candidate.ID || run.ImportInfo.SHA256 != candidate.sha256) {
 			err = errors.New("文件在扫描后发生变化，请重新扫描并确认")
 		}
@@ -462,7 +465,7 @@ func (s *scanService) importSelected(ctx context.Context, selection []int, done 
 		}
 		replaced := false
 		if err == nil {
-			replaced, err = s.publishRun(ctx, run, events)
+			replaced, err = s.publishRun(ctx, run, events, cp)
 		}
 		if err != nil {
 			s.issue(candidate.Path, err)

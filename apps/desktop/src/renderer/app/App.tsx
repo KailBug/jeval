@@ -12,7 +12,8 @@ import type {
   Run,
   RunEvent,
   RunStatus,
-  ScanStatus
+  ScanStatus,
+  UpdateStatus
 } from '../../../../../contracts/index'
 
 const statusLabels: Record<RunStatus, string> = {
@@ -76,8 +77,58 @@ export function App() {
   const [scanError, setScanError] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [directories, setDirectories] = useState<CodexDirectory[]>([])
+  const [update, setUpdate] = useState<UpdateStatus>()
+  const [updateError, setUpdateError] = useState('')
+  const updating = update?.state === 'running' || update?.state === 'cancelling'
   const scanning = scan?.state === 'running' || scan?.state === 'cancelling'
-  const busy = importing || exporting || choosingDirectory || reconnecting
+  const busy = importing || exporting || choosingDirectory || reconnecting || updating
+
+  useEffect(() => {
+    if (!update || !updating) return
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+    const id = update.id
+    async function poll() {
+      try {
+        const next = await window.jeval.updateStatus(id)
+        if (!active) return
+        setUpdate(next)
+        setUpdateError('')
+        if (next.state === 'running' || next.state === 'cancelling') timer = setTimeout(poll, 200)
+        else {
+          if (next.state === 'failed') setImportError(next.message)
+          else setNotice(next.message)
+          setRevision((n) => n + 1)
+        }
+      } catch (e) {
+        if (active) {
+          setUpdateError(`${errorMessage(e)}；更新结果尚未确认，可重试取消或重新连接引擎。`)
+          timer = setTimeout(poll, 1500)
+        }
+      }
+    }
+    void poll()
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [update?.id, updating])
+
+  async function cancelUpdate() {
+    if (!update) return
+    try {
+      const next = await window.jeval.cancelUpdate(update.id)
+      setUpdateError('')
+      setUpdate(next)
+      if (next.state !== 'running' && next.state !== 'cancelling') {
+        if (next.state === 'failed') setImportError(next.message)
+        else setNotice(next.message)
+        setRevision((n) => n + 1)
+      }
+    } catch (e) {
+      setUpdateError(errorMessage(e))
+    }
+  }
 
   useEffect(() => {
     setRunPageOffsets([0])
@@ -269,11 +320,10 @@ export function App() {
     if (!selected || selected.demo || selected.readOnly) return
     setImporting(true)
     setImportError('')
+    setNotice('')
+    setUpdateError('')
     try {
-      const result = await window.jeval.updateCodex(selected.id)
-      setSelected(result.run)
-      setNotice(`已更新记录 · ${result.run.eventCount} 个事件`)
-      setRevision((n) => n + 1)
+      setUpdate(await window.jeval.updateCodex(selected.id))
     } catch (e) {
       setImportError(`${errorMessage(e)}；已保存的快照保留。`)
     } finally {
@@ -316,6 +366,8 @@ export function App() {
     try {
       setHello(await window.jeval.restartEngine())
       setScan(undefined)
+      setUpdate(undefined)
+      setUpdateError('')
       setPickerOpen(false)
       setScanError('')
       setNotice('引擎已重新连接，已导入的快照和保存的目录已恢复。')
@@ -556,6 +608,28 @@ export function App() {
               )}
             </section>
           )}
+          {(updating || updateError) && (
+            <section className="import-notice" aria-label="记录更新">
+              <span role="status">{update?.message}</span>
+              <button
+                className="text-button"
+                onClick={() => void cancelUpdate()}
+                disabled={update?.state === 'cancelling'}
+              >
+                {update?.state === 'cancelling' ? '正在取消更新…' : '取消更新'}
+              </button>
+              {updateError && <span role="alert">{updateError}</span>}
+              {updateError && (
+                <button
+                  className="text-button"
+                  onClick={() => void reconnect()}
+                  disabled={reconnecting}
+                >
+                  重新连接引擎
+                </button>
+              )}
+            </section>
+          )}
           {notice && (
             <div className="import-notice" role="status">
               <span>{notice}</span>
@@ -702,7 +776,7 @@ export function App() {
                   key={selected.id + ':' + (selected.importInfo?.sha256 ?? '') + ':' + revision}
                   run={selected}
                   onUpdate={updateCodex}
-                  updating={importing}
+                  updating={importing || !!updating}
                   updateDisabled={choosingDirectory || !!scanning || reconnecting || exporting}
                   onExport={exportRecord}
                   exportDisabled={busy || !!scanning}

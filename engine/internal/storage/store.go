@@ -13,10 +13,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"jeval/engine/internal/adapters/codex"
+
 	_ "modernc.org/sqlite"
 )
 
-const SchemaVersion = 3
+const SchemaVersion = 4
 const schemaVersion = SchemaVersion
 
 const (
@@ -58,7 +60,14 @@ CREATE INDEX snapshot_events_kind ON snapshot_events(snapshot_id, kind, sequence
 CREATE TABLE directories (
   id TEXT PRIMARY KEY,
   path TEXT NOT NULL UNIQUE
-);`, `ALTER TABLE sources ADD COLUMN update_allowed INTEGER NOT NULL DEFAULT 1 CHECK(update_allowed IN (0,1));`}
+);`, `ALTER TABLE sources ADD COLUMN update_allowed INTEGER NOT NULL DEFAULT 1 CHECK(update_allowed IN (0,1));`, `
+CREATE TABLE source_checkpoints (
+ source_id TEXT PRIMARY KEY REFERENCES sources(id),
+ snapshot_id TEXT NOT NULL,
+ checkpoint_json BLOB NOT NULL CHECK(length(checkpoint_json) <= 1048576),
+ checksum TEXT NOT NULL,
+ FOREIGN KEY(source_id, snapshot_id) REFERENCES snapshots(source_id, id)
+);`}
 
 type Store struct {
 	db   *sql.DB
@@ -133,17 +142,17 @@ func (s *Store) migrate(ctx context.Context, steps []string) error {
 // Save publishes one immutable, preview-only normalized snapshot. Retaining
 // previous versions ensures old evidence never silently points at new content.
 func (s *Store) Save(ctx context.Context, run model.Run, events []model.Event) error {
-	return s.save(ctx, run, events, false)
+	return s.save(ctx, run, events, false, nil)
 }
 
 // SaveExchange records a detached snapshot. Its embedded source location is
 // evidence, never authorization to read that location on this computer.
 // An identical current snapshot preserves the existing update permission.
 func (s *Store) SaveExchange(ctx context.Context, run model.Run, events []model.Event) error {
-	return s.save(ctx, run, events, true)
+	return s.save(ctx, run, events, true, nil)
 }
 
-func (s *Store) save(ctx context.Context, run model.Run, events []model.Event, detached bool) error {
+func (s *Store) save(ctx context.Context, run model.Run, events []model.Event, detached bool, checkpoint *codex.Checkpoint) error {
 	// Update permission is local source configuration, not immutable data.
 	run.ReadOnly = false
 	if err := validate(run, events); err != nil {
@@ -199,6 +208,11 @@ func (s *Store) save(ctx context.Context, run model.Run, events []model.Event, d
 	}
 	if _, err = tx.ExecContext(ctx, query, run.ID, info.SnapshotID); err != nil {
 		return err
+	}
+	if !detached {
+		if err = saveCheckpoint(ctx, tx, run, checkpoint); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }
