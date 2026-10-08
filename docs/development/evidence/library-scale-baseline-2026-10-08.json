@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-08T00:06:09.892Z",
+  "mode": "baseline",
+  "generator": "library-scale-v1",
+  "synthetic": true,
+  "environment": {
+    "platform": "win32",
+    "osRelease": "10.0.26200",
+    "cpu": "Intel(R) Core(TM) Ultra 5 225H",
+    "logicalCPUs": 14,
+    "ramBytes": 33752997888,
+    "node": "v24.19.0"
+  },
+  "revision": "54ef5e421a09591e89d72ab227c96d7a70e929fb",
+  "artifacts": {
+    "engineSHA256": "7927855abdcfdb660e54604e349146f18935c385fd8e910091c9d28267a4797e",
+    "desktopSHA256": "b6fceb1e614b2375e0bca44e227d2b822af7228cf634f0a49ef4b3413460416c",
+    "asarSHA256": "4eb3af2ff31b6c5a85ef83052f6590392d4adf197b3abd3cdd94bcdf3cf2fec0"
+  },
+  "corpus": {
+    "tasks": 20,
+    "largeCount": 5000,
+    "totalEvents": 43000,
+    "sourceBytes": 16510770,
+    "aggregateSHA256": "9ecffe63f653aed9590e814b12ecd54e96e5181d2739a274573064c91ff2a725",
+    "databaseBytes": 138723328
+  },
+  "measurements": {
+    "importMs": 2476.3781,
+    "seedStopMs": 7.139400000000023,
+    "processColdStartupMs": {
+      "samples": [
+        357.71,
+        279.98,
+        280.15,
+        279.12,
+        285.78,
+        281.33,
+        278.54,
+        275.92,
+        278.32,
+        276.21
+      ],
+      "p95": 357.71309999999994,
+      "max": 357.71309999999994
+    },
+    "taskScreenMs": {
+      "samples": [
+        223.59,
+        227.16,
+        227.42,
+        228.96,
+        229.55,
+        231.42,
+        228.06,
+        229.98,
+        228.4,
+        227.33,
+        229.22,
+        231.38,
+        223.01,
+        229.35,
+        225.91,
+        226.99,
+        229.3,
+        228.57,
+        232.39,
+        228.6
+      ],
+      "p95": 231.42360000000008,
+      "max": 232.3934999999983
+    },
+    "eventScreenMs": {
+      "samples": [
+        229.86,
+        229.89,
+        230.21,
+        229.94,
+        229.85,
+        230.13,
+        230.15,
+        230.77,
+        230.12,
+        227.05,
+        230.15,
+        223.74,
+        230.32,
+        230.33,
+        230.29,
+        230.09,
+        229.96,
+        231.68,
+        224.07,
+        230.58
+      ],
+      "p95": 230.77260000000024,
+      "max": 231.6813000000002
+    },
+    "hotQueryMs": {
+      "samples": [
+        16,
+        17.1,
+        15.4,
+        20.4,
+        16.3,
+        18.2,
+        16.5,
+        15.6,
+        14.7,
+        28.3,
+        17.5,
+        17.1,
+        14.1,
+        19,
+        15.6,
+        15.2,
+        16.3,
+        14,
+        17.7,
+        16.4
+      ],
+      "p95": 20.400000000023283,
+      "max": 28.300000000046566
+    },
+    "pageAndScrollMs": {
+      "samples": [
+        623.93,
+        249.12,
+        302.55,
+        253.58,
+        249.05,
+        247.93,
+        248.86,
+        248.46,
+        273.35,
+        248.17,
+        248.79,
+        248.06,
+        255.19,
+        247.66,
+        260.79,
+        389.88,
+        246.82,
+        248.59,
+        248.25,
+        254.39
+      ],
+      "p95": 389.8794999999991,
+      "max": 623.9264000000003
+    },
+    "cancel": {
+      "feedbackMs": 4.699999999953434,
+      "completedMs": 388.5999999999767
+    },
+    "closeMs": {
+      "samples": [
+        102.72,
+        134.08,
+        129.15,
+        123.84,
+        121.1,
+        127.82,
+        127.09,
+        136.97,
+        124.72,
+        124.52
+      ],
+      "p95": 136.97420000000056,
+      "max": 136.97420000000056
+    },
+    "importMemory": {
+      "workingSetBytes": 44101632,
+      "peakWorkingSetBytes": 54439936
+    },
+    "memoryBefore": {
+      "electron": [
+        {
+          "type": "Browser",
+          "workingSetKiB": 104528,
+          "peakWorkingSetKiB": 104528
+        },
+        {
+          "type": "GPU",
+          "workingSetKiB": 149980,
+          "peakWorkingSetKiB": 149980
+        },
+        {
+          "type": "Utility",
+          "workingSetKiB": 43944,
+          "peakWorkingSetKiB": 43944
+        },
+        {
+          "type": "Tab",
+          "workingSetKiB": 89628,
+          "peakWorkingSetKiB": 89628
+        }
+      ],
+      "engine": {
+        "workingSetBytes": 10342400,
+        "peakWorkingSetBytes": 10342400
+      }
+    },
+    "memoryAfter": {
+      "electron": [
+        {
+          "type": "Browser",
+          "workingSetKiB": 106768,
+          "peakWorkingSetKiB": 108064
+        },
+        {
+          "type": "GPU",
+          "workingSetKiB": 282676,
+          "peakWorkingSetKiB": 282676
+        },
+        {
+          "type": "Utility",
+          "workingSetKiB": 43964,
+          "peakWorkingSetKiB": 43964
+        },
+        {
+          "type": "Tab",
+          "workingSetKiB": 207396,
+          "peakWorkingSetKiB": 211788
+        }
+      ],
+      "engine": {
+        "workingSetBytes": 20918272,
+        "peakWorkingSetBytes": 21774336
+      }
+    },
+    "cancelMemory": {
+      "electron": [
+        {
+          "type": "Browser",
+          "workingSetKiB": 109768,
+          "peakWorkingSetKiB": 109768
+        },
+        {
+          "type": "GPU",
+          "workingSetKiB": 337040,
+          "peakWorkingSetKiB": 338812
+        },
+        {
+          "type": "Utility",
+          "workingSetKiB": 43964,
+          "peakWorkingSetKiB": 43964
+        },
+        {
+          "type": "Tab",
+          "workingSetKiB": 216536,
+          "peakWorkingSetKiB": 217024
+        }
+      ],
+      "engine": {
+        "workingSetBytes": 34545664,
+        "peakWorkingSetBytes": 34545664
+      }
+    }
+  },
+  "thresholds": {
+    "startupMaxMs": 3000,
+    "firstScreenP95Ms": 1000,
+    "cancelFeedbackMs": 1000
+  },
+  "passed": true,
+  "caveats": [
+    "Fresh app processes; OS filesystem caches are not flushed. First and repeated launches are retained.",
+    "Memory samples include Electron processes and the owned engine; per-process lifetime peaks are not a simultaneous aggregate peak.",
+    "Synthetic scale evidence does not extend source compatibility or clean-machine acceptance."
+  ]
+}

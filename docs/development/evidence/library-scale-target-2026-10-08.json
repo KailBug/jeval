@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-08T00:21:41.587Z",
+  "mode": "target",
+  "generator": "library-scale-v1",
+  "synthetic": true,
+  "environment": {
+    "platform": "win32",
+    "osRelease": "10.0.26200",
+    "cpu": "Intel(R) Core(TM) Ultra 5 225H",
+    "logicalCPUs": 14,
+    "ramBytes": 33752997888,
+    "node": "v24.19.0",
+    "electron": "44.5.1",
+    "appVersion": "0.1.0-dev.0"
+  },
+  "revision": "bbbd06ab76b35b365e79683240584a5bf1cbd5c6",
+  "workingTreeDirty": false,
+  "productDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "measurementScriptSHA256": "5d9606e81e989cb39f6066bf142eb77588d7046946cfff60c60c3b1fa4aaf50d",
+  "artifacts": {
+    "engineSHA256": "64ceaac6dfce186946698cab127df93aee6126e31b2abe9f74de8d910775d177",
+    "desktopSHA256": "b0412e19b3ff3919239d3541ba39dc6152819c7b5a1e32baed316223e7b2f6b3",
+    "asarSHA256": "f825a6cc9bed5ea20fa3dc8e645aa2dc3a6cacb4eed34e7390f73c8611214231"
+  },
+  "corpus": {
+    "tasks": 1000,
+    "largeCount": 10000,
+    "totalEvents": 49960,
+    "sourceBytes": 50943073,
+    "aggregateSHA256": "1b08dacdbc0254deead71d4d85ed4bab8f9edc13b775aff8891cf21600176266",
+    "databaseBytes": 222691328
+  },
+  "measurements": {
+    "importMs": 9273.9,
+    "seedStopMs": 26.848299999999654,
+    "processColdStartupMs": {
+      "samples": [
+        443.63,
+        278.05,
+        276.79,
+        290.34,
+        294.83,
+        280.19,
+        335.68,
+        310.02,
+        323.26,
+        354.08
+      ],
+      "p95": 443.6255999999994,
+      "max": 443.6255999999994
+    },
+    "taskScreenMs": {
+      "samples": [
+        239.68,
+        239.26,
+        246.68,
+        225.62,
+        247.11,
+        225.38,
+        226.28,
+        241.02,
+        228.83,
+        227.45,
+        232.36,
+        228.29,
+        232.39,
+        242.17,
+        239.54,
+        229.17,
+        226.35,
+        240.17,
+        232.33,
+        231.68
+      ],
+      "p95": 246.67540000000008,
+      "max": 247.1128000000026
+    },
+    "eventScreenMs": {
+      "samples": [
+        229.85,
+        230.33,
+        230.04,
+        230.12,
+        223.72,
+        229.92,
+        230.17,
+        230.22,
+        230.44,
+        229.96,
+        232.14,
+        232.27,
+        223.9,
+        230.04,
+        230.32,
+        230.32,
+        230.27,
+        230.41,
+        224.31,
+        230.04
+      ],
+      "p95": 232.14380000000165,
+      "max": 232.27189999999973
+    },
+    "hotQueryMs": {
+      "samples": [
+        31.4,
+        31.3,
+        29.3,
+        31.8,
+        32.2,
+        30.5,
+        30.4,
+        29,
+        30.8,
+        28.7,
+        31.1,
+        29,
+        31.1,
+        29.6,
+        30.7,
+        29.8,
+        35.6,
+        31.7,
+        31.3,
+        32.4
+      ],
+      "p95": 32.4000000001397,
+      "max": 35.60000000009313
+    },
+    "pageAndScrollMs": {
+      "samples": [
+        276.33,
+        259.41,
+        248.79,
+        248.77,
+        248.26,
+        278.58,
+        248.82,
+        254.46,
+        254.33,
+        268.84,
+        264.72,
+        260.57,
+        248.23,
+        248.17,
+        255.7,
+        267.02,
+        260.04,
+        285.22,
+        260.75,
+        259.36
+      ],
+      "p95": 278.58110000000306,
+      "max": 285.2247999999963
+    },
+    "cancel": {
+      "feedbackMs": 4.899999999906868,
+      "completedMs": 418.0999999998603
+    },
+    "closeMs": {
+      "samples": [
+        95.09,
+        142.1,
+        140.45,
+        111.46,
+        128.55,
+        124.3,
+        117.05,
+        126.55,
+        113.34,
+        107.27
+      ],
+      "p95": 142.10390000000007,
+      "max": 142.10390000000007
+    },
+    "importMemory": {
+      "workingSetBytes": 35774464,
+      "peakWorkingSetBytes": 84963328
+    },
+    "memoryBefore": {
+      "electron": [
+        {
+          "type": "Browser",
+          "workingSetKiB": 106916,
+          "peakWorkingSetKiB": 106916
+        },
+        {
+          "type": "GPU",
+          "workingSetKiB": 153564,
+          "peakWorkingSetKiB": 153564
+        },
+        {
+          "type": "Utility",
+          "workingSetKiB": 44152,
+          "peakWorkingSetKiB": 44152
+        },
+        {
+          "type": "Tab",
+          "workingSetKiB": 86596,
+          "peakWorkingSetKiB": 86596
+        }
+      ],
+      "engine": {
+        "workingSetBytes": 18595840,
+        "peakWorkingSetBytes": 18595840
+      }
+    },
+    "memoryAfter": {
+      "electron": [
+        {
+          "type": "Browser",
+          "workingSetKiB": 109384,
+          "peakWorkingSetKiB": 110788
+        },
+        {
+          "type": "GPU",
+          "workingSetKiB": 242788,
+          "peakWorkingSetKiB": 242788
+        },
+        {
+          "type": "Utility",
+          "workingSetKiB": 44176,
+          "peakWorkingSetKiB": 44176
+        },
+        {
+          "type": "Tab",
+          "workingSetKiB": 207736,
+          "peakWorkingSetKiB": 208228
+        }
+      ],
+      "engine": {
+        "workingSetBytes": 21745664,
+        "peakWorkingSetBytes": 21839872
+      }
+    },
+    "cancelMemory": {
+      "electron": [
+        {
+          "type": "Browser",
+          "workingSetKiB": 111904,
+          "peakWorkingSetKiB": 112440
+        },
+        {
+          "type": "GPU",
+          "workingSetKiB": 305888,
+          "peakWorkingSetKiB": 305888
+        },
+        {
+          "type": "Utility",
+          "workingSetKiB": 44176,
+          "peakWorkingSetKiB": 44176
+        },
+        {
+          "type": "Tab",
+          "workingSetKiB": 218408,
+          "peakWorkingSetKiB": 218408
+        }
+      ],
+      "engine": {
+        "workingSetBytes": 30367744,
+        "peakWorkingSetBytes": 30851072
+      }
+    }
+  },
+  "thresholds": {
+    "startupMaxMs": 3000,
+    "firstScreenP95Ms": 1000,
+    "cancelFeedbackMs": 1000
+  },
+  "passed": true,
+  "caveats": [
+    "Fresh app processes; OS filesystem caches are not flushed. First and repeated launches are retained.",
+    "revision identifies the measurement checkout; artifact hashes identify the actual compiled binaries.",
+    "Memory samples include Electron processes and the owned engine; per-process lifetime peaks are not a simultaneous aggregate peak.",
+    "Synthetic scale evidence does not extend source compatibility or clean-machine acceptance."
+  ]
+}
