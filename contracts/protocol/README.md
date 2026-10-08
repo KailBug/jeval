@@ -134,3 +134,11 @@ C 的 records.import / records.export 仅在持久化模式提供并列入 hello
 - `annotations.delete({...target,expectedRevision})` 清空备注并保存 deleted=true，修订号递增；删除后重建必须使用该修订号，防止旧编辑器覆盖。修订号和时间为本地写入元数据，不修改原快照，也不是完整编辑审计历史。
 
 每个快照/事件一个标注，全库最多 100000 个已创建目标（含删除标记）。所有写入为事务；错配/缺失目标 NOT_FOUND，参数错误 INVALID_PARAMS，旧修订号 ANNOTATION_CONFLICT，目标总量限制 ANNOTATION_LIMIT，数据库失败 STORAGE_FAILED。冲突不自动重放；UI 保留草稿并允许用户显式重新读取。来源更新不会复制标注到新快照，历史选择器可复查旧版本。现有 records.export/import v1 仍不携带标注。
+
+## E02 比较报告
+
+持久化模式 hello 增加 `comparisons.export`。参数严格为 `{left:{runId,snapshotId},right:{runId,snapshotId},path,format}`；两侧 ID 各为非空且最多 128 字节，path 为最多 2048 字节的绝对路径，format 为 json 或 markdown。两侧必须是已保存快照，可为同一个或历史版本；错误来源/快照组合返回 NOT_FOUND。未知字段或无效参数为 INVALID_PARAMS，目标保护、编码/超限或写入失败为 EXPORT_FAILED；无持久化模式为 METHOD_NOT_FOUND。
+
+结果为 `{path,format,left,right,eventCounts:[左侧总数,右侧总数]}`，来自数据库同一次读取事务中的两份不可变预览及已保存人工标注，写文件成功才返回。报告范围、64 MiB 上限、指标与标注字段见 [比较报告 v1](../comparison/README.md)，不使用当前指针或来源文件，不受时间线分页/筛选影响。
+
+DesktopAPI 的 exportComparison 只接受两侧快照引用和格式。主进程核对已保存目标并通过保存选择器取得路径；取消返回 null，不发送导出写入。来源写入/选择器/重启互斥，渲染层没有任意路径访问。请求超时 30 秒，没有底层写入取消或自动重放；文件保护与临时写入/替换沿用 records.export。

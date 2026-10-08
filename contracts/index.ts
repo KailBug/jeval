@@ -187,7 +187,37 @@ export interface AnnotationSave extends AnnotationTarget {
   note: string
   expectedRevision: number
 }
+export interface SnapshotRef {
+  runId: string
+  snapshotId: string
+}
+export interface ComparisonExportQuery {
+  left: SnapshotRef
+  right: SnapshotRef
+  format: RecordExportFormat
+}
+export interface ComparisonExportResult extends ComparisonExportQuery {
+  path: string
+  eventCounts: [number, number]
+}
+export interface MetricDifference {
+  left: number | null
+  right: number | null
+  delta: number | null
+}
+export interface ComparisonReport {
+  format: 'jeval-comparison'
+  formatVersion: 1
+  contentScope: 'normalized-preview'
+  sourceFilesIncluded: false
+  fullContentIncluded: false
+  generatedAt: string
+  left: { record: NativeRecordEnvelope['record']; annotations: Annotation[] }
+  right: { record: NativeRecordEnvelope['record']; annotations: Annotation[] }
+  metrics: Record<'durationMs' | 'tokens' | 'eventCount', MetricDifference>
+}
 export interface DesktopAPI {
+  exportComparison(query: ComparisonExportQuery): Promise<ComparisonExportResult | null>
   listSnapshots(runId: string, offset?: number): Promise<Page<Run>>
   getSnapshot(runId: string, snapshotId: string): Promise<Run>
   getAnnotation(target: AnnotationTarget): Promise<{ annotation: Annotation | null }>

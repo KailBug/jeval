@@ -3,6 +3,7 @@ import type { DesktopAPI } from '../../../../contracts/index'
 
 const api: DesktopAPI = {
   platform: process.platform,
+  exportComparison: (query) => ipcRenderer.invoke('jeval:export-comparison', query),
   listSnapshots: (runId, offset = 0) =>
     ipcRenderer.invoke('jeval:runs.snapshots', { runId, offset, limit: 20 }),
   getSnapshot: (runId, snapshotId) =>

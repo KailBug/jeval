@@ -1,12 +1,12 @@
 # M0 开发记录
 
-更新日期：2026-10-08。当前 E01 交付分支：`feat/e01-snapshot-annotations`，基线 main `f892842`；此前记录保留原分支背景。
+更新日期：2026-10-08。当前 E02 交付分支：`feat/e02-manual-comparison`，基线 main `d78643d`；此前记录保留原分支背景。
 
 阶段结论：**M0 进行中，Codex 文件导入、目录发现后选择导入、记录内搜索/类型筛选可用，里程碑未验收完成**。主规划中的决策与清单见 [开发规划](../jeval-development-plan.md)，专题入口见 [文档索引](../README.md)。
 
 ## 2026-10-08 E01 与 E02 授权
 
-D03 [PR #15](https://github.com/KailBug/jeval/pull/15) 已合并同步至 f892842，最终 push/PR CI 全部通过。用户明确授权本轮完成快照/事件标注及两份记录手动并排对比；先实现、验证和交付 E01，再串行推进 E02，各自独立 PR。对应实现、验证与限制集中在 [M3 进度](m3-progress.md)。本次范围结束后停止，E03 仍需新授权；不创建 worktree。
+D03 [PR #15](https://github.com/KailBug/jeval/pull/15) 已合并同步至 f892842，最终 push/PR CI 全部通过。用户明确授权本轮完成快照/事件标注及两份记录手动并排对比；E01 [PR #16](https://github.com/KailBug/jeval/pull/16) 最终 push/PR CI 全部通过，已合并并同步至 d78643d；按本轮明确授权串行推进 E02，各自独立 PR。对应实现、验证与限制集中在 [M3 进度](m3-progress.md)。本次范围结束后停止，E03 仍需新授权；不创建 worktree。
 
 ## 2026-10-08 D03：规模基线与扩容
 

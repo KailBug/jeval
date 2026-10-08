@@ -2,7 +2,7 @@
 
 更新日期：2026-10-08。当前 A01 已建立真实来源能力矩阵：7 份获准 0.142.5 paginated 旧轨迹及 2 份公开脱敏分支衍生样本，明确部分支持和缺失；D01 检查点依据见 M2 进度。现有 C 的单快照 JSON/Markdown 交换已实现，依据见 M3 进度；A02 本机 NSIS 安装/启动/卸载和原生选择器已验证；D02 已实现完整标准化文本保存和按需查看，验证见 M2；D03 固定合成规模已测；完整版本覆盖、干净系统安装与真实分布/大历史库规模仍未验收。
 
-D03 已通过 PR #15 合并同步；本轮用户明确授权依次完成 E01 快照/事件标注与 E02 手动并排对比。先端到端验证并交付 E01，再推进 E02，各自独立 PR，结束后等待新授权。A02 干净环境待办保留。Codex 本地预览与 Alpha 为中间交付，最终目标包含多 harness、Langfuse/Harbor 评测互操作、分部件分析与受控对比、eval 中可选 Jev，G–I 尚未实现。全部在现有目录串行分支开发。
+E01 已通过 PR #16 合并并同步至 d78643d；本轮用户明确授权两项功能，E02 手动并排对比已实现，本机完整回归通过，等待最新 PR CI 与交付。两项各自独立 PR，E02 合并同步后停止，E03 需新授权。A02 干净环境待办保留。Codex 本地预览与 Alpha 为中间交付，最终目标包含多 harness、Langfuse/Harbor 评测互操作、分部件分析与受控对比、eval 中可选 Jev，G–I 尚未实现。全部在现有目录串行分支开发。
 
 ## 阅读入口
 
@@ -12,9 +12,10 @@ D03 已通过 PR #15 合并同步；本轮用户明确授权依次完成 E01 快
 | 功能队列、依赖与验收卡         | [feature-list](../doc/feature-list.md)                                               | 用户指定的 doc 路径；当前交付、证据、后续授权与最终目标队列 |
 | 阶段自动开发与合并规则         | [阶段开发流程](development/stage-workflow.md)                                        | 同目录分支、PR/CI、快进同步、恢复及每次 merge 后等待继续    |
 | 已做什么、验证到哪里、下一步   | [M0 开发记录](development/m0-progress.md)                                            | 当前进度、验证依据与待办                                    |
-| 记录交换与 M3 开发依据         | [M3 开发记录](development/m3-progress.md)                                            | C 的实现、往返/故障检查与记录管理待办                       |
+| 记录交换与 M3 开发依据         | [M3 开发记录](development/m3-progress.md)                                            | C 交换、E01 标注和 E02 比较的实现、验证与限制               |
 | 检查点更新与 M2 开发依据       | [M2 开发记录](development/m2-progress.md)                                            | D01 解析续接与 D02 正文保存、迁移、分页和离线验证           |
 | 原生 JSON 交换格式             | [交换 v1](../contracts/exchange/README.md)                                           | 包版本、范围、身份、兼容规则与共享合成样本                  |
+| 手动比较 JSON/Markdown 报告    | [比较报告 v1](../contracts/comparison/README.md)                                     | 两份固定快照、人工标注、指标和导出范围                      |
 | 如何启动、测试和打包           | [开发运行指南](development/getting-started.md)                                       | 可复制的命令、产物和常见问题                                |
 | 代码结构、进程与数据流         | [M0 架构与决策](architecture/m0-architecture.md)                                     | 实际模块职责、选择理由和技术边界                            |
 | SQLite 选择、事务与快照恢复    | [存储与任务库](architecture/storage-validation.md)                                   | 驱动依据、桌面接入、迁移、分页与故障恢复边界                |

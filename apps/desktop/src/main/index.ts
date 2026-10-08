@@ -214,6 +214,44 @@ function registerIPC(): void {
         importing = false
       }
     },
+    'jeval:export-comparison': async (params) => {
+      const p = params as {
+        left?: { runId?: unknown; snapshotId?: unknown }
+        right?: { runId?: unknown; snapshotId?: unknown }
+        format?: unknown
+      } | null
+      if (!p?.left || !p.right || (p.format !== 'json' && p.format !== 'markdown'))
+        throw new Error('请选择两份已保存快照与导出格式')
+      const left = { runId: requireID(p.left.runId), snapshotId: requireID(p.left.snapshotId) },
+        right = { runId: requireID(p.right.runId), snapshotId: requireID(p.right.snapshotId) }
+      if (!window || importing || restarting) throw new Error('请等待当前操作完成')
+      importing = true
+      try {
+        await ready
+        await ensureScanIdle()
+        await engine.request('runs.snapshot', left)
+        await engine.request('runs.snapshot', right)
+        const format = p.format
+        const destination = await dialog.showSaveDialog(window, {
+          title: '导出手动对比报告',
+          defaultPath: format === 'json' ? 'comparison.jeval-comparison.json' : 'comparison.md',
+          filters: [
+            {
+              name: format === 'json' ? 'jeval 比较报告' : 'Markdown 比较报告',
+              extensions: [format === 'json' ? 'json' : 'md']
+            }
+          ]
+        })
+        if (destination.canceled || !destination.filePath) return null
+        return await engine.request(
+          'comparisons.export',
+          { left, right, format, path: destination.filePath },
+          30000
+        )
+      } finally {
+        importing = false
+      }
+    },
     'jeval:export-record': async (params) => {
       const selection = params as { runId?: unknown; format?: unknown } | null
       if (!selection || (selection.format !== 'json' && selection.format !== 'markdown'))

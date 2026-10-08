@@ -194,3 +194,17 @@ Remove-Item Env:JEVAL_PACKAGED_EXECUTABLE
 打开已保存记录后，在“快照历史”选择当前或历史版本。点击“标注整个快照”或“标注此事件”，选择判断并保存备注；列表可再次打开原事件，删除需第二次确认。原始来源离线也可操作。更新后新快照的标注为空，旧版本仍可切回；冲突时草稿保留，由用户重新读取再决定修改。
 
 `npm run check` 包含 annotations.test.ts 的真实引擎重启/历史/修订号检查；`npm run test:e2e` 包含标注桌面流程。设置 JEVAL_ANNOTATION_EXECUTABLE 可单独运行随包引擎集成，使用 JEVAL_PACKAGED_EXECUTABLE 可复验桌面目录包。新资料库布局为 v6；旧版不支持降级打开，保留资料库并使用配套版本。
+
+## E02 手动比较
+
+点击任务库“手动对比”，分别选择左右记录/历史快照，在各侧独立搜索、筛选、翻页和保存标注。耗时/Token 缺失显示未知；顶部“导出比较 JSON/Markdown”保存全部预览及已保存标注，范围见 [比较报告 v1](../../contracts/comparison/README.md)。JSON 为报告，不可当记录包重新导入。
+
+npm run check 包含 comparison.test.ts；npm run test:e2e 包含离线历史快照、独立浏览、草稿与导出流程。随包引擎验证：
+
+```powershell
+$env:JEVAL_COMPARISON_EXECUTABLE = (Resolve-Path 'release/win-unpacked/resources/engine/jeval-engine.exe').Path
+node --import tsx --test tests/integration/comparison.test.ts
+Remove-Item Env:JEVAL_COMPARISON_EXECUTABLE
+```
+
+配合既有 JEVAL_PACKAGED_EXECUTABLE 可运行目录包桌面流程；本轮使用独立合成数据，不安装程序或读取默认私人资料库。
