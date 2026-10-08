@@ -34,13 +34,14 @@ type Response struct {
 	Error   *RPCError `json:"error,omitempty"`
 }
 type query struct {
-	Search string `json:"search"`
-	Status string `json:"status"`
-	Source string `json:"source"`
-	RunID  string `json:"runId"`
-	Kind   string `json:"kind"`
-	Offset int    `json:"offset"`
-	Limit  *int   `json:"limit"`
+	Search     string `json:"search"`
+	Status     string `json:"status"`
+	Source     string `json:"source"`
+	RunID      string `json:"runId"`
+	Kind       string `json:"kind"`
+	Offset     int    `json:"offset"`
+	Limit      *int   `json:"limit"`
+	SnapshotID string `json:"snapshotId"`
 }
 type Page[T any] struct {
 	Items      []T  `json:"items"`

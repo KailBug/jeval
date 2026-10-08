@@ -121,3 +121,16 @@ C 的 records.import / records.export 仅在持久化模式提供并列入 hello
 持久化任务库与内存模式最多登记 1000 个非演示来源、50000 个当前事件（桌面含演示）；单快照/单次 Codex 解析/交换最多 10000 事件。检查同时覆盖启动恢复、单文件导入、已登记更新、扫描预检及交换导入；替换已有来源不消耗新文件名额，任何超限不发布新的快照。Go 统一常量位于 model/limits.go。
 
 扫描仍每批最多尝试 200 个文件、保存目录最多 20 个；来源大小、行数、正文预算、帧预算与分页接口不变。1000 来源需显式分批导入，未启用启动扫描。固定性能样本、环境、方法与边界见 [规模验收](../../docs/development/library-scale.md)。
+
+## E01：历史快照与人工标注
+
+仅持久化库提供 `runs.snapshots`、`runs.snapshot` 和 `annotations.get/list/save/delete`，并列入 hello。版本仍为 protocol v1；SQLite 独立升级为 v6。演示不持久化，也不提供人工标注。
+
+- `runs.snapshots({runId,offset?,limit?})` 返回 `Page<Run>`，按保存顺序倒序。默认 20，最大 50；帧预算可能缩短页，跟随实际 nextOffset。`runs.snapshot({runId,snapshotId})` 返回绑定该来源的历史元数据。
+- `runs.events` 增加可选 snapshotId。未提供沿用当前快照，提供时只读取该版本；来源/快照错配为 NOT_FOUND。分页/搜索仍只覆盖预览，不读取原文件。
+- 标注目标为 `{runId,snapshotId,eventId}`，eventId 必须为 null（整个快照）或该版本的非空事件 ID。保存目标与派生 event 以已存证据核对，不接受用户构造的证据。
+- `annotations.get(target)` 返回 `{annotation: Annotation|null}`。已有删除标记仍返回修订号；新目标为 null。`annotations.list({runId,snapshotId,offset?,limit?})` 返回未删除的分页标注，默认 20、最多 50，event 含该快照的事件预览与证据。
+- `annotations.save({...target,judgement,note,expectedRevision})` 的 judgement 为 accepted/rejected/uncertain；备注最多 4096 UTF-8 字节，拒绝 NUL。expectedRevision 为当前修订号，新目标为 0。返回已提交标注，字段见 [TypeScript 定义](../index.ts)。
+- `annotations.delete({...target,expectedRevision})` 清空备注并保存 deleted=true，修订号递增；删除后重建必须使用该修订号，防止旧编辑器覆盖。修订号和时间为本地写入元数据，不修改原快照，也不是完整编辑审计历史。
+
+每个快照/事件一个标注，全库最多 100000 个已创建目标（含删除标记）。所有写入为事务；错配/缺失目标 NOT_FOUND，参数错误 INVALID_PARAMS，旧修订号 ANNOTATION_CONFLICT，目标总量限制 ANNOTATION_LIMIT，数据库失败 STORAGE_FAILED。冲突不自动重放；UI 保留草稿并允许用户显式重新读取。来源更新不会复制标注到新快照，历史选择器可复查旧版本。现有 records.export/import v1 仍不携带标注。

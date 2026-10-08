@@ -3,6 +3,8 @@ import { Icon } from '../components/Icon'
 import { useBrowseHistory } from './browse-history'
 import { EventContent } from './EventContent'
 import { ScanPicker } from './ScanPicker'
+import { Annotations } from './Annotations'
+import { SnapshotPicker } from './SnapshotPicker'
 import logo from '../../../resources/jeval.svg'
 import type {
   Hello,
@@ -773,7 +775,7 @@ export function App() {
                 </div>
               </section>
               {selected ? (
-                <RunDetail
+                <SnapshotDetail
                   key={selected.id + ':' + (selected.importInfo?.sha256 ?? '') + ':' + revision}
                   run={selected}
                   onUpdate={updateCodex}
@@ -797,13 +799,43 @@ export function App() {
   )
 }
 
-function RunDetail({
+function SnapshotDetail(props: Parameters<typeof RunDetail>[0]) {
+  const [snapshot, setSnapshot] = useState(props.run)
+  const [dirty, setDirty] = useState(false)
+  const choose = (run: Run) => {
+    if (!dirty || window.confirm('切换快照会丢弃未保存的标注草稿。继续吗？')) {
+      setDirty(false)
+      setSnapshot(run)
+    }
+  }
+  if (props.run.demo || !props.run.importInfo) return <RunDetail {...props} />
+  const historical = snapshot.importInfo!.snapshotId !== props.run.importInfo.snapshotId
+  return (
+    <div className="snapshot-detail">
+      <SnapshotPicker current={props.run} selected={snapshot} onSelect={choose} />
+      {historical && (
+        <p className="historical-notice">正在浏览历史快照，事件和标注保留该版本的证据。</p>
+      )}
+      <RunDetail
+        {...props}
+        key={snapshot.importInfo!.snapshotId}
+        run={snapshot}
+        updateDisabled={props.updateDisabled || historical}
+        exportDisabled={props.exportDisabled || historical}
+        onAnnotationDirty={setDirty}
+      />
+    </div>
+  )
+}
+
+export function RunDetail({
   run,
   onUpdate,
   updating,
   updateDisabled,
   onExport,
-  exportDisabled
+  exportDisabled,
+  onAnnotationDirty
 }: {
   run: Run
   onUpdate(): Promise<void>
@@ -811,7 +843,16 @@ function RunDetail({
   updateDisabled: boolean
   onExport(format: RecordExportFormat): Promise<ExportResult | null>
   exportDisabled: boolean
+  onAnnotationDirty?: (dirty: boolean) => void
 }) {
+  const [annotationEvent, setAnnotationEvent] = useState<RunEvent | null>(null)
+  const [annotationDirty, setAnnotationDirty] = useState(false)
+  const chooseAnnotation = (event: RunEvent | null) => {
+    if (!annotationDirty || window.confirm('切换标注目标会丢弃未保存的草稿。继续吗？')) {
+      setAnnotationDirty(false)
+      setAnnotationEvent(event)
+    }
+  }
   const [events, setEvents] = useState<RunEvent[]>([])
   const [nextOffset, setNextOffset] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -839,7 +880,14 @@ function RunDetail({
     setError('')
     const timer = setTimeout(() => {
       void window.jeval
-        .listEvents({ runId: run.id, search: eventSearch, kind: eventKind, offset, limit: 50 })
+        .listEvents({
+          runId: run.id,
+          ...(run.importInfo ? { snapshotId: run.importInfo.snapshotId } : {}),
+          search: eventSearch,
+          kind: eventKind,
+          offset,
+          limit: 50
+        })
         .then((page) => {
           if (active) {
             setEvents(page.items)
@@ -1017,6 +1065,23 @@ function RunDetail({
             )}
           </section>
         )}
+        {!run.demo && run.importInfo && (
+          <>
+            <button className="button" onClick={() => chooseAnnotation(null)}>
+              标注整个快照
+            </button>
+            <Annotations
+              key={annotationEvent?.id ?? 'snapshot'}
+              run={run}
+              event={annotationEvent}
+              onSelect={chooseAnnotation}
+              onDirty={(dirty) => {
+                setAnnotationDirty(dirty)
+                onAnnotationDirty?.(dirty)
+              }}
+            />
+          </>
+        )}
         <div className="metrics">
           <div>
             <span>执行耗时</span>
@@ -1168,6 +1233,11 @@ function RunDetail({
                       <EventContent key={event.id} runId={run.id} event={event} />
                     )}
                   </>
+                )}
+                {!run.demo && (
+                  <button className="evidence-link" onClick={() => chooseAnnotation(event)}>
+                    标注此事件
+                  </button>
                 )}
                 <button
                   className="evidence-link"
