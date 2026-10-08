@@ -148,6 +148,10 @@ func (s *Store) Runs(ctx context.Context) ([]model.Run, error) {
 // page share a read transaction so a concurrently published snapshot cannot
 // mix totals, metadata or evidence from two versions.
 func (s *Store) Events(ctx context.Context, sourceID, search, kind string, offset, limit int) ([]model.Event, int, error) {
+	return s.EventsAt(ctx, sourceID, "", search, kind, offset, limit)
+}
+
+func (s *Store) EventsAt(ctx context.Context, sourceID, requestedSnapshot, search, kind string, offset, limit int) ([]model.Event, int, error) {
 	if offset < 0 || offset > 1000000000 || limit < 1 || limit > 100 || len(search) > 1000 {
 		return nil, 0, errors.New("invalid event page: offset must be 0..1000000000, limit 1..100, search at most 1000 bytes")
 	}
@@ -159,9 +163,17 @@ func (s *Store) Events(ctx context.Context, sourceID, search, kind string, offse
 	var snapshotID string
 	var data []byte
 	var eventCount int
-	if err = tx.QueryRowContext(ctx, `SELECT sources.current_snapshot_id, snapshot_runs.event_count,snapshot_runs.run_json FROM sources LEFT JOIN snapshot_runs ON sources.id=snapshot_runs.source_id AND sources.current_snapshot_id=snapshot_runs.snapshot_id WHERE sources.id=?`, sourceID).Scan(&snapshotID, &eventCount, &data); err != nil {
-		return nil, 0, err
+	if requestedSnapshot == "" {
+		if err = tx.QueryRowContext(ctx, `SELECT sources.current_snapshot_id, snapshot_runs.event_count,snapshot_runs.run_json FROM sources LEFT JOIN snapshot_runs ON sources.id=snapshot_runs.source_id AND sources.current_snapshot_id=snapshot_runs.snapshot_id WHERE sources.id=?`, sourceID).Scan(&snapshotID, &eventCount, &data); err != nil {
+			return nil, 0, err
+		}
+	} else {
+		snapshotID = requestedSnapshot
+		if err = tx.QueryRowContext(ctx, `SELECT event_count,run_json FROM snapshot_runs WHERE source_id=? AND snapshot_id=?`, sourceID, snapshotID).Scan(&eventCount, &data); err != nil {
+			return nil, 0, err
+		}
 	}
+
 	run, err := decodeRun(data)
 	if err != nil {
 		return nil, 0, err

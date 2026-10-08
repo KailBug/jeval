@@ -3,6 +3,15 @@ import type { DesktopAPI } from '../../../../contracts/index'
 
 const api: DesktopAPI = {
   platform: process.platform,
+  listSnapshots: (runId, offset = 0) =>
+    ipcRenderer.invoke('jeval:runs.snapshots', { runId, offset, limit: 20 }),
+  getSnapshot: (runId, snapshotId) =>
+    ipcRenderer.invoke('jeval:runs.snapshot', { runId, snapshotId }),
+  getAnnotation: (target) => ipcRenderer.invoke('jeval:annotations.get', target),
+  listAnnotations: (runId, snapshotId, offset = 0) =>
+    ipcRenderer.invoke('jeval:annotations.list', { runId, snapshotId, offset, limit: 20 }),
+  saveAnnotation: (input) => ipcRenderer.invoke('jeval:annotations.save', input),
+  deleteAnnotation: (target) => ipcRenderer.invoke('jeval:annotations.delete', target),
   importCodex: () => ipcRenderer.invoke('jeval:import-codex'),
   importRecord: () => ipcRenderer.invoke('jeval:import-record'),
   exportRecord: (runId, format) => ipcRenderer.invoke('jeval:export-record', { runId, format }),

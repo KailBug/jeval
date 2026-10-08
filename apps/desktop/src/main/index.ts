@@ -266,6 +266,22 @@ function registerIPC(): void {
       await ready
       return engine.request('runs.get', { runId: id })
     },
+    ...Object.fromEntries(
+      [
+        'runs.snapshots',
+        'runs.snapshot',
+        'annotations.get',
+        'annotations.list',
+        'annotations.save',
+        'annotations.delete'
+      ].map((method) => [
+        'jeval:' + method,
+        async (params: unknown) => {
+          await ready
+          return engine.request(method, params)
+        }
+      ])
+    ),
     'jeval:event-content': async (params) => {
       await ready
       return engine.request('runs.eventContent', params)

@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const SchemaVersion = 5
+const SchemaVersion = 6
 const schemaVersion = SchemaVersion
 
 const (
@@ -73,6 +73,21 @@ CREATE TABLE event_contents (
  event_id TEXT NOT NULL,
  body BLOB NOT NULL CHECK(length(body) <= 16777216),
  PRIMARY KEY(snapshot_id,event_id),
+ FOREIGN KEY(snapshot_id,event_id) REFERENCES snapshot_events(snapshot_id,id)
+);`, `
+CREATE TABLE annotations (
+ source_id TEXT NOT NULL,
+ snapshot_id TEXT NOT NULL,
+ target_key TEXT NOT NULL,
+ event_id TEXT,
+ judgement TEXT NOT NULL CHECK(judgement IN ('accepted','rejected','uncertain')),
+ note TEXT NOT NULL CHECK(length(CAST(note AS BLOB)) <= 4096),
+ revision INTEGER NOT NULL CHECK(revision > 0),
+ updated_at TEXT NOT NULL,
+ deleted INTEGER NOT NULL CHECK(deleted IN (0,1)),
+ PRIMARY KEY(snapshot_id,target_key),
+ CHECK(target_key=coalesce(event_id,'')),
+ FOREIGN KEY(source_id,snapshot_id) REFERENCES snapshots(source_id,id),
  FOREIGN KEY(snapshot_id,event_id) REFERENCES snapshot_events(snapshot_id,id)
 );`}
 

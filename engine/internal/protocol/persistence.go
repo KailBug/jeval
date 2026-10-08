@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ type libraryStore interface {
 func hello(persistent bool) map[string]any {
 	capabilities := []string{"demo", "runs.list", "runs.get", "runs.events", "codex.import", "codex.update", "codex.update.start", "codex.update.status", "codex.update.cancel", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}
 	if persistent {
-		capabilities = append(capabilities, "persistent-library", "runs.eventContent", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
+		capabilities = append(capabilities, "persistent-library", "runs.eventContent", "runs.snapshots", "runs.snapshot", "annotations.get", "annotations.list", "annotations.save", "annotations.delete", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
 	}
 	return map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": capabilities}
 }
@@ -172,7 +173,24 @@ func (s *scanService) persistedEvents(req Request) Response {
 	if run.Demo {
 		return dispatchRecord(req, &s.record)
 	}
-	items, total, err := s.store.Events(context.Background(), run.ID, q.Search, q.Kind, q.Offset, limit)
+	var items []model.Event
+	var total int
+	var err error
+	if q.SnapshotID != "" {
+		store, ok := s.store.(historyStore)
+		if !ok {
+			return failure(req.ID, "METHOD_NOT_FOUND", "History unavailable")
+		}
+		if len(q.SnapshotID) > 128 {
+			return failure(req.ID, "INVALID_PARAMS", "Invalid snapshot ID")
+		}
+		items, total, err = store.EventsAt(context.Background(), run.ID, q.SnapshotID, q.Search, q.Kind, q.Offset, limit)
+	} else {
+		items, total, err = s.store.Events(context.Background(), run.ID, q.Search, q.Kind, q.Offset, limit)
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return failure(req.ID, "NOT_FOUND", "Snapshot not found in requested run")
+	}
 	if err != nil {
 		return failure(req.ID, "STORAGE_FAILED", err.Error())
 	}

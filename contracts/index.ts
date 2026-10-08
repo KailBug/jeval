@@ -145,6 +145,7 @@ export interface RunQuery {
   limit?: number
 }
 export interface EventQuery {
+  snapshotId?: string
   runId: string
   search?: string
   kind?: EventKind | 'all'
@@ -167,7 +168,32 @@ export interface EventContentPage {
   totalBytes: number
   nextOffset: number | null
 }
+export type AnnotationJudgement = 'accepted' | 'rejected' | 'uncertain'
+export interface AnnotationTarget {
+  runId: string
+  snapshotId: string
+  eventId: string | null
+}
+export interface Annotation extends AnnotationTarget {
+  judgement: AnnotationJudgement
+  note: string
+  revision: number
+  updatedAt: string
+  deleted: boolean
+  event: RunEvent | null
+}
+export interface AnnotationSave extends AnnotationTarget {
+  judgement: AnnotationJudgement
+  note: string
+  expectedRevision: number
+}
 export interface DesktopAPI {
+  listSnapshots(runId: string, offset?: number): Promise<Page<Run>>
+  getSnapshot(runId: string, snapshotId: string): Promise<Run>
+  getAnnotation(target: AnnotationTarget): Promise<{ annotation: Annotation | null }>
+  listAnnotations(runId: string, snapshotId: string, offset?: number): Promise<Page<Annotation>>
+  saveAnnotation(input: AnnotationSave): Promise<Annotation>
+  deleteAnnotation(target: AnnotationTarget & { expectedRevision: number }): Promise<Annotation>
   getEventContent(query: EventContentQuery): Promise<EventContentPage>
   readonly platform: string
   importCodex(): Promise<ImportResult | null>
