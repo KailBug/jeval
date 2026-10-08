@@ -4,7 +4,7 @@
 
 ## 当前交付与授权
 
-- 当前功能：E02，手动并排对比；2026-10-08 用户明确授权本轮依次完成 E01 和 E02 手动并排对比。
+- 当前功能：E02，手动并排对比，[PR #17](https://github.com/KailBug/jeval/pull/17)；2026-10-08 用户明确授权本轮依次完成 E01 和 E02 手动并排对比。
 - 当前分支：`feat/e02-manual-comparison`；基线 main `d78643d`，E01 [PR #16](https://github.com/KailBug/jeval/pull/16) 最终 push/PR CI 通过、已合并并快进同步。
 - 本轮范围：先端到端完成 E01 并交付独立 PR，再在同步后的 main 上开发 E02 并交付另一个 PR。
 - 状态：E01 已完成；E02 已实现，本机完整回归通过，等待最新 PR CI 与交付。A02 干净 Windows 待办保留。
