@@ -239,7 +239,7 @@ func TestStorageKeepsImportCapsAcrossRestart(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "caps.sqlite")
 	s := openTest(t, path)
-	for n := range 20 {
+	for n := range maxCurrentSources {
 		run, events := syntheticSnapshot(fmt.Sprintf("source-%d", n), 0)
 		if err := s.Save(ctx, run, events); err != nil {
 			t.Fatal(err)
@@ -247,9 +247,9 @@ func TestStorageKeepsImportCapsAcrossRestart(t *testing.T) {
 	}
 	s.Close()
 	s = openTest(t, path)
-	run, events := syntheticSnapshot("source-20", 0)
+	run, events := syntheticSnapshot("source-over-limit", 0)
 	if err := s.Save(ctx, run, events); err == nil {
-		t.Fatal("accepted twenty-first source after restart")
+		t.Fatal("accepted source above the validated limit after restart")
 	}
 	run, events = syntheticSnapshot("source-0", 1)
 	run.ImportInfo.SHA256 = strings.Repeat("b", 64)
@@ -258,8 +258,8 @@ func TestStorageKeepsImportCapsAcrossRestart(t *testing.T) {
 	if err := s.Save(ctx, run, events); err != nil {
 		t.Fatal("replacement rejected at source cap", err)
 	}
-	run, events = syntheticSnapshot("too-large", 5001)
-	if err := s.Save(ctx, run, events); err == nil {
+	run, events = syntheticSnapshot("too-large", maxSnapshotEvents+1)
+	if err := s.Save(ctx, run, events); err == nil || !strings.Contains(err.Error(), "snapshot event limit") {
 		t.Fatal("accepted per-snapshot event limit violation")
 	}
 }

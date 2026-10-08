@@ -22,9 +22,9 @@ const SchemaVersion = 5
 const schemaVersion = SchemaVersion
 
 const (
-	maxCurrentSources = 20
-	maxCurrentEvents  = 50000
-	maxSnapshotEvents = 5000
+	maxCurrentSources = model.MaxImportedSources
+	maxCurrentEvents  = model.MaxCurrentEvents
+	maxSnapshotEvents = model.MaxSnapshotEvents
 )
 
 var migrations = []string{`

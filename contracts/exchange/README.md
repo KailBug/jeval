@@ -25,7 +25,7 @@ JSON 顶层只能包含以下字段，均为必填：
 
 - 仅接收 UTF-8 普通文件，最多 64 MiB，JSON 仅一个完整值；不接受重复对象键、未知字段、字段大小写变体、缺失必填字段或 JSON 嵌套深度超过 32。拒绝不成对的 Unicode surrogate 转义，避免 Go JSON 解码替换内容；有效 surrogate 对正常解码。未来 `formatVersion/schemaVersion/adapterVersion` 明确拒绝，不尝试降级解析。
 - 运行 `source=Codex`、`demo=false`、`adapterVersion=codex-rollout-v1`，historyMode 为 classic 或 paginated，status 为 completed/failed/unknown。`startedAt/durationMs/tokens` 和事件 `timestamp/parentId` 必须存在，未知保持 `null`；其余必填字段不能为 `null`。指标为非负、精确的安全 JavaScript 整数，禁止用 0 代替未知。
-- 时间戳必须为带时区的 RFC 3339 字符串，`null` 表示未知。非整数、负数或超过 `9007199254740991` 的数值拒绝；事件计数额外限制为 0–5000 并严格等于数组长度。
+- 时间戳必须为带时区的 RFC 3339 字符串，`null` 表示未知。非整数、负数或超过 `9007199254740991` 的数值拒绝；事件计数额外限制为 0–10000 并严格等于数组长度。
 - 来源 ID 为 `codex-` 加 64 位小写十六进制，来源摘要也是 64 位小写十六进制。snapshotId 按 [记录身份公式](../record/README.md#来源快照与永久引用) 重算后必须完全一致；不会根据当前机器上的路径重新生成来源 ID。
 - 事件 ID 必须为 `run.id:物理行号`，不可重复；sequence 按数组顺序连续从 1 开始。runId、evidence.sourceId、snapshotId、location 都必须指向所属运行/快照/原定位。物理行号为正的安全整数。parentId 只引用包内事件，允许前向引用但拒绝自引用、环或包外引用。
 - kind 为 message/tool_call/tool_result/verification/lifecycle/error；role 为 user/assistant/system/developer/tool。不猜测未知状态或关联。
@@ -44,3 +44,5 @@ Markdown 包含运行状态、缺失指标、来源定位、来源摘要、快�
 ## 与 D02 本地完整正文的关系
 
 D02 另存的完整标准化文本不进入 formatVersion=1 JSON 或 Markdown。交换仍为 normalized-preview；在空白库再导入后，正文接口返回 available=false，包括未截断或为空的预览。包内不存在完整性证明，不能据此合成正文。原生导出和再导入保持既有版本/身份，不扩大访问原文件的权限；完整正文交换需要以后单独定义版本与验收。
+
+D03 将本机接收/导出的单快照事件容量提升至 10000；64 MiB 文件、预览正文和 formatVersion=1 不变。容量扩展不改变字段或身份算法，5000 以内旧包继续可读；旧版本 jeval 仍可能拒绝超过 5000 事件的包，不承诺旧程序能读取扩容后的库或大包。正文全文仍不进入交换。

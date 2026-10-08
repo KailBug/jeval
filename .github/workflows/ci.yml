@@ -35,6 +35,16 @@ jobs:
       - run: node --import tsx --test tests/integration/source-audit.test.ts
         env:
           JEVAL_AUDIT_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
+      - name: Validate packaged library scale
+        run: node --import tsx scripts/validation/library-scale.ts target .local/library-scale.json
+        env:
+          JEVAL_PACKAGED_EXECUTABLE: release/win-unpacked/jeval.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: library-scale-evidence
+          path: .local/library-scale.json
+          if-no-files-found: ignore
       - run: npm run test:e2e
         env:
           JEVAL_PACKAGED_EXECUTABLE: release/win-unpacked/jeval.exe

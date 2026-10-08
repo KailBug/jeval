@@ -175,3 +175,16 @@ Remove-Item Env:JEVAL_CONTENT_EXECUTABLE
 ```
 
 测试创建独立合成来源和资料库并清理，不读取默认私人资料库。SQLite v5 迁移不会读取原来源；旧记录要在原文件仍可用时点击更新才补存正文。当前交换文件不包含完整正文，范围以 contracts 为准。
+
+## D03 规模复验
+
+先构建 Windows 目录包，再在仓库根目录运行：
+
+```powershell
+npm run pack
+$env:JEVAL_PACKAGED_EXECUTABLE = (Resolve-Path 'release/win-unpacked/jeval.exe').Path
+node --import tsx scripts/validation/library-scale.ts target .local/library-scale.json
+Remove-Item Env:JEVAL_PACKAGED_EXECUTABLE
+```
+
+脚本使用独立生成的合成来源与资料库，测量后清理临时数据，只保留指定 JSON 报告；不会安装程序或读取现有私人资料库。baseline 模式用于旧配额同类样本，原 D02 对照数据及方法见 [规模验收](library-scale.md)。CI 已配置目标目录包测量并归档报告，阈值失败不能记为通过。

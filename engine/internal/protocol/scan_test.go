@@ -209,6 +209,9 @@ func TestScanBoundsAndEmptyDirectory(t *testing.T) {
 	if status.State != "limited" || status.Discovered != maxScanFiles || status.Failed != maxScanFiles || len(status.Issues) != 30 {
 		t.Fatal(status)
 	}
+	for i := 0; i < model.MaxImportedSources-20; i++ {
+		s.record.Runs = append(s.record.Runs, model.Run{ID: fmt.Sprintf("saved-%d", i), Source: "Codex"})
+	}
 	root = t.TempDir()
 	for i := 0; i < 21; i++ {
 		writeScanFile(t, filepath.Join(root, fmt.Sprintf("%03d.jsonl", i)), scanFixture)
@@ -224,10 +227,10 @@ func TestScanBoundsAndEmptyDirectory(t *testing.T) {
 	}
 	params, _ := json.Marshal(map[string]any{"id": status.ID, "ids": ids})
 	res := s.dispatch(request("codex.scan.import", string(params)))
-	if res.Error == nil || res.Error.Code != "IMPORT_LIMIT" || !strings.Contains(res.Error.Message, "20 个文件") {
+	if res.Error == nil || res.Error.Code != "IMPORT_LIMIT" || !strings.Contains(res.Error.Message, fmt.Sprintf("%d 个文件", model.MaxImportedSources)) {
 		t.Fatal(res)
 	}
-	if len(s.record.Runs) != 3 {
+	if len(s.record.Runs) != model.MaxImportedSources-20+3 {
 		t.Fatal("over-limit selection partially imported")
 	}
 	status = selectScan(t, s, status.ID, ids[:20]...)

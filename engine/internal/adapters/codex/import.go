@@ -20,7 +20,7 @@ import (
 )
 
 const MaxFileBytes = 16 * 1024 * 1024
-const MaxEvents = 5000
+const MaxEvents = model.MaxSnapshotEvents
 const MaxTextBytes = 8192
 
 type rolloutLine struct {
@@ -368,7 +368,7 @@ func normalize(ctx context.Context, path string, data []byte, state *parseState)
 			continue
 		}
 		if len(events) >= MaxEvents {
-			return model.Run{}, nil, fmt.Errorf("文件超过 5000 个事件导入上限")
+			return model.Run{}, nil, fmt.Errorf("文件超过 %d 个事件导入上限", MaxEvents)
 		}
 		if event.Kind == "message" && event.Role == "user" && !hasTitle && strings.TrimSpace(event.Content) != "" {
 			run.Title, hasTitle = messageTitle(event.Content), true
