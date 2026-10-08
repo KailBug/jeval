@@ -90,6 +90,8 @@ func (s *scanService) dispatch(req Request) Response {
 	}
 	res := Response{Type: "response", Version: Version, ID: req.ID}
 	switch req.Method {
+	case "comparisons.export":
+		return s.exportComparison(req)
 	case "runs.snapshots", "runs.snapshot", "annotations.get", "annotations.list", "annotations.save", "annotations.delete":
 		return s.review(req)
 	case "codex.update.start", "codex.update.status", "codex.update.cancel":

@@ -1,5 +1,7 @@
 package model
 
+const MaxAnnotationNoteBytes = 4096
+
 // Annotation is a local human opinion about one immutable snapshot or event.
 // Event is derived from saved evidence, never supplied by a caller.
 type Annotation struct {

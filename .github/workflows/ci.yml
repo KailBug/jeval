@@ -38,6 +38,9 @@ jobs:
       - run: node --import tsx --test tests/integration/annotations.test.ts
         env:
           JEVAL_ANNOTATION_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
+      - run: node --import tsx --test tests/integration/comparison.test.ts
+        env:
+          JEVAL_COMPARISON_EXECUTABLE: release/win-unpacked/resources/engine/jeval-engine.exe
       - name: Validate packaged library scale
         run: node --import tsx scripts/validation/library-scale.ts target .local/library-scale.json
         env:

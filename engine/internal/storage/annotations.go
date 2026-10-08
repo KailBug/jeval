@@ -12,7 +12,7 @@ import (
 	"jeval/engine/internal/model"
 )
 
-const MaxAnnotationBytes = 4096
+const MaxAnnotationBytes = model.MaxAnnotationNoteBytes
 const MaxAnnotationTargets = 100000
 
 var ErrAnnotationConflict = errors.New("annotation changed; reload before saving")

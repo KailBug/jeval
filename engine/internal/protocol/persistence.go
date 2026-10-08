@@ -31,7 +31,7 @@ type libraryStore interface {
 func hello(persistent bool) map[string]any {
 	capabilities := []string{"demo", "runs.list", "runs.get", "runs.events", "codex.import", "codex.update", "codex.update.start", "codex.update.status", "codex.update.cancel", "codex.scan.start", "codex.scan.status", "codex.scan.cancel", "codex.scan.candidates", "codex.scan.import"}
 	if persistent {
-		capabilities = append(capabilities, "persistent-library", "runs.eventContent", "runs.snapshots", "runs.snapshot", "annotations.get", "annotations.list", "annotations.save", "annotations.delete", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
+		capabilities = append(capabilities, "persistent-library", "runs.eventContent", "runs.snapshots", "runs.snapshot", "annotations.get", "annotations.list", "annotations.save", "annotations.delete", "comparisons.export", "codex.directories.list", "codex.directories.remove", "records.export", "records.import")
 	}
 	return map[string]any{"engineVersion": "0.1.0-dev.0", "protocolVersion": Version, "recordVersion": 1, "capabilities": capabilities}
 }
