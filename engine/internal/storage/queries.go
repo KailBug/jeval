@@ -91,7 +91,7 @@ func checkCapacity(ctx context.Context, tx *sql.Tx, replacingID string, count in
 		sources++
 	}
 	if sources > maxCurrentSources || events+count > maxCurrentEvents {
-		return errors.New("task library limit exceeded: maximum 20 files and 50000 events")
+		return fmt.Errorf("task library limit exceeded: maximum %d files and %d events", maxCurrentSources, maxCurrentEvents)
 	}
 	return nil
 }

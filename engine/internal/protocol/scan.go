@@ -264,8 +264,8 @@ func (s *scanService) dispatch(req Request) Response {
 				files++
 				events += s.candidates[index].EventCount
 			}
-			if files > 20 || events > 50000 {
-				return failure(req.ID, "IMPORT_LIMIT", "所选记录超出任务库 20 个文件或 50000 个事件的上限，请减少选择；本次未导入任何记录")
+			if files > model.MaxImportedSources || events > model.MaxCurrentEvents {
+				return failure(req.ID, "IMPORT_LIMIT", fmt.Sprintf("所选记录超出任务库 %d 个文件或 %d 个事件的上限，请减少选择；本次未导入任何记录", model.MaxImportedSources, model.MaxCurrentEvents))
 			}
 			s.scan.Phase, s.scan.State, s.scan.Message = "import", "running", "正在导入所选记录"
 			s.scan.Imported, s.scan.Updated, s.scan.Failed = 0, 0, 0

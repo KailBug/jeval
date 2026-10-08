@@ -299,7 +299,7 @@ func TestPersistentQuotaRemainsAcrossRestart(t *testing.T) {
 	root := t.TempDir()
 	store := openLibrary(t, filepath.Join(t.TempDir(), "library.sqlite"))
 	s := persistentService(t, store)
-	for i := 0; i < 20; i++ {
+	for i := 0; i < model.MaxImportedSources; i++ {
 		path := filepath.Join(root, fmt.Sprintf("%02d.jsonl", i))
 		writeScanFile(t, path, scanFixture)
 		importFile(t, s, path)
@@ -309,12 +309,12 @@ func TestPersistentQuotaRemainsAcrossRestart(t *testing.T) {
 	path := filepath.Join(root, "new.jsonl")
 	writeScanFile(t, path, scanFixture)
 	res := s.dispatch(request("codex.import", fmt.Sprintf(`{"path":%q}`, path)))
-	if res.Error == nil || res.Error.Code != "IMPORT_LIMIT" || len(s.record.Runs) != 23 {
+	if res.Error == nil || res.Error.Code != "IMPORT_LIMIT" || len(s.record.Runs) != model.MaxImportedSources+3 {
 		t.Fatal(res)
 	}
 	// Updating an existing source consumes no additional file slot.
 	run := importFile(t, s, filepath.Join(root, "00.jsonl"))
-	if run.EventCount != 1 || len(s.record.Runs) != 23 {
+	if run.EventCount != 1 || len(s.record.Runs) != model.MaxImportedSources+3 {
 		t.Fatal(run)
 	}
 }

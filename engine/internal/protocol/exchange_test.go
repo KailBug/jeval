@@ -198,16 +198,16 @@ func TestNativeImportFailureAndQuotasPublishNothing(t *testing.T) {
 		t.Fatal("failed save persisted source", runs, err)
 	}
 	fault.saveErr = nil
-	for n := range 20 {
+	for n := range model.MaxImportedSources {
 		path := filepath.Join(t.TempDir(), fmt.Sprintf("source-%d.jsonl", n))
 		writeScanFile(t, path, scanFixture)
 		importFile(t, s, path)
 	}
 	res = s.dispatch(nativeRequest(bundle))
-	if res.Error == nil || res.Error.Code != "IMPORT_LIMIT" || len(s.record.Runs) != 23 {
+	if res.Error == nil || res.Error.Code != "IMPORT_LIMIT" || len(s.record.Runs) != model.MaxImportedSources+3 {
 		t.Fatal("native import bypassed library quota", res)
 	}
-	if runs, err := store.Runs(context.Background()); err != nil || len(runs) != 20 {
+	if runs, err := store.Runs(context.Background()); err != nil || len(runs) != model.MaxImportedSources {
 		t.Fatal("overlimit import changed library", runs, err)
 	}
 	invalid := filepath.Join(t.TempDir(), "invalid.json")

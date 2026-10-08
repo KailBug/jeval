@@ -270,8 +270,8 @@ func replacementIndex(record *model.Record, run model.Run, events int) (int, err
 			}
 		}
 	}
-	if imported >= 20 || eventCount > 50000 {
-		return -1, fmt.Errorf("任务库最多导入 20 个文件、50000 个事件，请减少导入范围")
+	if imported >= model.MaxImportedSources || eventCount > model.MaxCurrentEvents {
+		return -1, fmt.Errorf("任务库最多导入 %d 个文件、%d 个事件，请减少导入范围", model.MaxImportedSources, model.MaxCurrentEvents)
 	}
 	return index, nil
 }

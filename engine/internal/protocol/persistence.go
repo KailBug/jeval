@@ -51,8 +51,8 @@ func newPersistentService(ctx context.Context, demo model.Record, store libraryS
 		files++
 		events += run.EventCount
 	}
-	if files > 20 || events > 50000 {
-		return nil, errors.New("saved library exceeds 20 files or 50000 events; database retained")
+	if files > model.MaxImportedSources || events > model.MaxCurrentEvents {
+		return nil, fmt.Errorf("saved library exceeds %d files or %d events; database retained", model.MaxImportedSources, model.MaxCurrentEvents)
 	}
 	demo.Runs = append(append([]model.Run{}, demo.Runs...), runs...)
 	return &scanService{record: demo, store: store}, nil

@@ -24,7 +24,7 @@ import (
 const (
 	MaxFileBytes    = 64 * 1024 * 1024
 	MaxContentBytes = 8192
-	MaxEvents       = 5000
+	MaxEvents       = model.MaxSnapshotEvents
 	maxSafeInteger  = int64(9007199254740991)
 	previewMarker   = "\n[内容预览已截断，请按来源行号查看原文件]"
 )
@@ -58,7 +58,7 @@ func Validate(record model.Record) error {
 		return errors.New("invalid run status")
 	}
 	if r.EventCount != len(record.Events) || r.EventCount < 0 || r.EventCount > MaxEvents {
-		return errors.New("exchange event count mismatch or 5000-event limit exceeded")
+		return fmt.Errorf("exchange event count mismatch or %d-event limit exceeded", MaxEvents)
 	}
 	for _, value := range []struct {
 		name, value string

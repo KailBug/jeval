@@ -90,7 +90,7 @@
 
 按保存的 directoryId 启动扫描时，根路径解析后必须仍对应已保存的规范化路径；链接/junction 替换导致目标变化返回 SCAN_FAILED，要求重新选择，不写入新的目录配置。
 
-发现状态：`running → completed/limited`，limited 为遍历上限。发现终态可启动所选导入，使用同一扫描 ID 和 `phase=import`，状态为 `running → completed`；任一阶段取消为 `running → cancelling → cancelled`，终态取消幂等。发现不会修改任务库；所选导入先检查 20 个文件/50000 个事件配额，超额整批拒绝。导入重读并核对身份/摘要，变化或失败仅拒绝该项、保留旧快照；成功项按路径替换，取消后不再发布，已经完成的所选项保留。新扫描替换旧候选与状态，旧 ID 或重启前 ID 返回 NOT_FOUND；shutdown/输入结束取消并等待后台退出。
+发现状态：`running → completed/limited`，limited 为遍历上限。发现终态可启动所选导入，使用同一扫描 ID 和 `phase=import`，状态为 `running → completed`；任一阶段取消为 `running → cancelling → cancelled`，终态取消幂等。发现不会修改任务库；所选导入先检查 1000 个文件/50000 个事件配额，超额整批拒绝。导入重读并核对身份/摘要，变化或失败仅拒绝该项、保留旧快照；成功项按路径替换，取消后不再发布，已经完成的所选项保留。新扫描替换旧候选与状态，旧 ID 或重启前 ID 返回 NOT_FOUND；shutdown/输入结束取消并等待后台退出。
 
 错误码：`PARSE_ERROR`、`INVALID_REQUEST`、`PROTOCOL_MISMATCH`、`METHOD_NOT_FOUND`、`INVALID_PARAMS`、`NOT_FOUND`、`IMPORT_FAILED`（读取或快照提交失败）、`IMPORT_LIMIT`（任务库记录上限）、`SCAN_FAILED`（根目录/启动失败）、`SCAN_BUSY`（已有活动扫描或更新，拒绝另一个来源写入任务）、`STORAGE_FAILED`（存储查询或目录配置写入失败）。无法解析的请求返回空 ID，其后的合法请求仍可处理。请求 ID 是不超过 128 字节的非空字符串。导入与扫描上限见 [Codex 适配器](../../docs/adapters/codex.md)。
 
@@ -115,3 +115,9 @@ C 的 records.import / records.export 仅在持久化模式提供并列入 hello
 身份不属于同一个来源/快照/事件时 NOT_FOUND；数据库错误为 STORAGE_FAILED；无持久化库时 METHOD_NOT_FOUND。读取不访问来源文件。正文仅为适配器映射后的文本，不含原始 JSONL 备份、图片/附件或未支持字段；每事件 16 MiB、每快照合计 32 MiB，超限整笔保存回滚。runs.events、搜索与 records.export 的 v1 预览范围不变。
 
 检查点续接前从同一快照恢复完整正文；旧库缺失任一正文时手动更新回退 full/content-not-saved，即使源字节未变化也重新解析并补存。启动、浏览和迁移不主动访问原文件。交换包不携带正文，嵌入路径不会授予补存权限。
+
+## D03：验证后的容量
+
+持久化任务库与内存模式最多登记 1000 个非演示来源、50000 个当前事件（桌面含演示）；单快照/单次 Codex 解析/交换最多 10000 事件。检查同时覆盖启动恢复、单文件导入、已登记更新、扫描预检及交换导入；替换已有来源不消耗新文件名额，任何超限不发布新的快照。Go 统一常量位于 model/limits.go。
+
+扫描仍每批最多尝试 200 个文件、保存目录最多 20 个；来源大小、行数、正文预算、帧预算与分页接口不变。1000 来源需显式分批导入，未启用启动扫描。固定性能样本、环境、方法与边界见 [规模验收](../../docs/development/library-scale.md)。
